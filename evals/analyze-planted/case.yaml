@@ -1,0 +1,11 @@
+schema_version: "1.1"
+name: analyze-planted
+description: Run /ucof analyze on the planted fixture and check the headline findings and decoy handling.
+tags: [analyze, planted]
+runs: 1
+context:
+  scaffold_script: fixture.sh
+execution:
+  max_turns: 80
+  timeout_seconds: 1500
+  allowed_tools: [Read, Glob, Grep, Bash, Write, Edit, Agent, Skill]

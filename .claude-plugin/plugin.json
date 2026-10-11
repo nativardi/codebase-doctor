@@ -1,0 +1,10 @@
+{
+  "name": "ucof",
+  "version": "3.0.0",
+  "description": "Universal Codebase Optimization Framework. Multi-agent codebase analysis across eight domains (security, data, backend, external services, frontend, infrastructure, performance, quality) with adversarial verification of every finding, a code-computed health score and execution plan, and a fix job that implements verified findings in an isolated worktree for you to review.",
+  "author": { "name": "Nati Vardi", "url": "https://github.com/nativardi" },
+  "homepage": "https://github.com/nativardi/ucof",
+  "repository": "https://github.com/nativardi/ucof",
+  "license": "MIT",
+  "keywords": ["code-analysis", "security", "performance", "technical-debt", "code-review", "multi-agent"]
+}

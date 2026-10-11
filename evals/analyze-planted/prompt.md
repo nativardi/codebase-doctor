@@ -1,0 +1,1 @@
+/ucof analyze .
