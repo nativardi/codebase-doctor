@@ -1,8 +1,8 @@
-# UCOF CLI - Headless API Alternative
+# Codebase Doctor CLI - Headless API Alternative
 
-> **Plugin or CLI?** The primary UCOF product is the Claude Code plugin at the repository root: it verifies every finding with an adversarial verifier and includes a review-gated fix job. This CLI is the **headless API alternative** for environments without Claude Code. It calls the Anthropic API directly. **CLI findings are unverified**, and `ucof fix` here only prints the top fixes and writes `pr-descriptions.md`. If you can run Claude Code in your pipeline, prefer the plugin, headlessly: `claude -p --plugin-dir /path/to/ucof "/ucof analyze ."`. See the [main README](../README.md) and [Plugin vs CLI](../VERSIONS.md).
+> **Plugin or CLI?** The primary Codebase Doctor product is the Claude Code plugin at the repository root: it verifies every finding with an adversarial verifier and includes a review-gated fix job. This CLI is the **headless API alternative** for environments without Claude Code. It calls the Anthropic API directly. **CLI findings are unverified**, and `codebase-doctor fix` here only prints the top fixes and writes `pr-descriptions.md`. If you can run Claude Code in your pipeline, prefer the plugin, headlessly: `claude -p --plugin-dir /path/to/codebase-doctor "/codebase-doctor analyze ."`. See the [main README](../README.md) and [Plugin vs CLI](../VERSIONS.md).
 
-The CLI shares the domain lenses (`skills/ucof/references/domains/`), the finding contract, and the reporter with the plugin, so ids, scores, and report formats have the same shape.
+The CLI shares the domain lenses (`skills/codebase-doctor/references/domains/`), the finding contract, and the reporter with the plugin, so ids, scores, and report formats have the same shape.
 
 ---
 
@@ -19,12 +19,12 @@ The CLI shares the domain lenses (`skills/ucof/references/domains/`), the findin
 ### Step 1: Clone and install
 
 ```bash
-git clone https://github.com/nativardi/ucof.git ~/ucof
-cd ~/ucof/cli-standalone
+git clone https://github.com/nativardi/codebase-doctor.git ~/codebase-doctor
+cd ~/codebase-doctor/cli-standalone
 npm install
 ```
 
-The CLI loads its lens files from `skills/ucof/references/domains/` in the same repository, so keep the CLI inside a full clone rather than copying `cli-standalone/` alone. Set `UCOF_PATH` to the repository root if you move it.
+The CLI loads its lens files from `skills/codebase-doctor/references/domains/` in the same repository, so keep the CLI inside a full clone rather than copying `cli-standalone/` alone. Set `DOCTOR_PATH` to the repository root if you move it.
 
 ### Step 2: Get an API key
 
@@ -52,28 +52,28 @@ echo $ANTHROPIC_API_KEY   # should start with sk-ant-
 Alias:
 
 ```bash
-alias ucof='~/ucof/cli-standalone/ucof.js'
+alias codebase-doctor='~/codebase-doctor/cli-standalone/codebase-doctor.js'
 ```
 
 Or link it globally:
 
 ```bash
-cd ~/ucof/cli-standalone
+cd ~/codebase-doctor/cli-standalone
 npm link
-ucof --help
+codebase-doctor --help
 ```
 
-To remove the link: `npm unlink -g ucof`. To uninstall entirely, unlink and delete the clone.
+To remove the link: `npm unlink -g codebase-doctor`. To uninstall entirely, unlink and delete the clone.
 
 You should see:
 
 ```
-Universal Codebase Optimization Framework (UCOF)
+Codebase Doctor
 
 Usage:
-  ucof analyze <project-path>    Run full analysis
-  ucof fix <project-path>        Start fix session (new context)
-  ucof report <project-path>     View existing report
+  codebase-doctor analyze <project-path>    Run full analysis
+  codebase-doctor fix <project-path>        Start fix session (new context)
+  codebase-doctor report <project-path>     View existing report
 ```
 
 ---
@@ -81,10 +81,10 @@ Usage:
 ## Analyze a project
 
 ```bash
-ucof analyze /path/to/your/project
+codebase-doctor analyze /path/to/your/project
 ```
 
-Without the alias: `node ~/ucof/cli-standalone/ucof.js analyze /path/to/your/project`. Results are written to `/path/to/your/project/.optimization/`.
+Without the alias: `node ~/codebase-doctor/cli-standalone/codebase-doctor.js analyze /path/to/your/project`. Results are written to `/path/to/your/project/.optimization/`.
 
 ```bash
 cat ~/my-app/.optimization/report.md           # Markdown report
@@ -99,39 +99,39 @@ cat ~/my-app/.optimization/report.json         # Canonical JSON
 
 ```bash
 # Full analysis (creates .optimization/)
-ucof analyze /path/to/project
+codebase-doctor analyze /path/to/project
 
 # View an existing report
-ucof report /path/to/project
+codebase-doctor report /path/to/project
 
 # Print the top fixes and write pr-descriptions.md (does not edit code)
-ucof fix /path/to/project
+codebase-doctor fix /path/to/project
 
 # Re-analyze with cached discovery
-ucof analyze /path/to/project --skip-discovery
+codebase-doctor analyze /path/to/project --skip-discovery
 
 # Flags
-ucof analyze /path/to/project --ci               # CI mode: JSON stdout, exit codes
-ucof analyze /path/to/project --force            # Bypass cache, force fresh analysis
-ucof analyze /path/to/project --concurrency 5    # Parallel domain limit (default: 3)
-ucof analyze /path/to/project --config ./my.json # Custom config file
+codebase-doctor analyze /path/to/project --ci               # CI mode: JSON stdout, exit codes
+codebase-doctor analyze /path/to/project --force            # Bypass cache, force fresh analysis
+codebase-doctor analyze /path/to/project --concurrency 5    # Parallel domain limit (default: 3)
+codebase-doctor analyze /path/to/project --config ./my.json # Custom config file
 
 # Help
-ucof --help
+codebase-doctor --help
 ```
 
 | Command | What it does |
 |---------|--------------|
-| `ucof analyze <path>` | Run full analysis, save to `.optimization/` |
-| `ucof report <path>` | Display the existing report |
-| `ucof fix <path>` | Print top fixes, write `pr-descriptions.md`. Does not implement fixes; use the plugin's `/ucof fix` for that |
-| `ucof analyze <path> --skip-discovery` | Re-run with cached tech detection |
+| `codebase-doctor analyze <path>` | Run full analysis, save to `.optimization/` |
+| `codebase-doctor report <path>` | Display the existing report |
+| `codebase-doctor fix <path>` | Print top fixes, write `pr-descriptions.md`. Does not implement fixes; use the plugin's `/codebase-doctor fix` for that |
+| `codebase-doctor analyze <path> --skip-discovery` | Re-run with cached tech detection |
 
 ---
 
 ## Output files
 
-After `ucof analyze`, the project has a `.optimization/` folder:
+After `codebase-doctor analyze`, the project has a `.optimization/` folder:
 
 ```
 your-project/
@@ -147,13 +147,13 @@ your-project/
     └── .cache/                # Hash-based re-run cache
 ```
 
-`report.json` is canonical; the other artifacts derive from it. `metadata.version` is `3.0.0`. Because the CLI has no verifier pass, `report.json` has no refuted findings and every finding is marked unverified.
+`report.json` is canonical; the other artifacts derive from it. `metadata.version` is 4.0.0. Because the CLI has no verifier pass, `report.json` has no refuted findings and every finding is marked unverified.
 
 ---
 
 ## Config file
 
-Place `.ucof.config.json` at the project root, or pass `--config <path>`. Precedence: CLI flags, then config file, then built-in defaults.
+Place `.codebase-doctor.config.json` at the project root, or pass `--config <path>`. Precedence: CLI flags, then config file, then built-in defaults.
 
 ```json
 {
@@ -192,8 +192,8 @@ If a preferred model is unavailable or rate-limited, the CLI falls back Opus to 
 If you can install Claude Code in the pipeline, run the plugin. Findings are verified, and the same plugin runs locally and in CI. `-p` is print mode (non-interactive); read the result from `report.json`. For permission handling in non-interactive runs (`--permission-mode`), see the Claude Code documentation.
 
 ```yaml
-# .github/workflows/ucof-plugin.yml
-name: UCOF (plugin)
+# .github/workflows/codebase-doctor-plugin.yml
+name: Codebase Doctor (plugin)
 
 on:
   workflow_dispatch:
@@ -210,16 +210,16 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Install Claude Code and UCOF
+      - name: Install Claude Code and Codebase Doctor
         run: |
           npm install -g @anthropic-ai/claude-code
-          git clone https://github.com/nativardi/ucof.git /tmp/ucof
+          git clone https://github.com/nativardi/codebase-doctor.git /tmp/codebase-doctor
 
-      - name: Run UCOF
+      - name: Run Codebase Doctor
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: |
-          claude -p --plugin-dir /tmp/ucof "/ucof analyze ."
+          claude -p --plugin-dir /tmp/codebase-doctor "/codebase-doctor analyze ."
 
       - name: Fail on critical findings
         run: |
@@ -231,17 +231,17 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ucof-report
+          name: codebase-doctor-report
           path: .optimization/
 ```
 
 ### Alternative: this CLI
 
-Use the CLI where Claude Code cannot be installed. A ready-made workflow is at [`.github/workflows/ucof.yml`](../.github/workflows/ucof.yml). The essential steps:
+Use the CLI where Claude Code cannot be installed. A ready-made workflow is at [`.github/workflows/codebase-doctor.yml`](../.github/workflows/codebase-doctor.yml). The essential steps:
 
 ```yaml
 # .github/workflows/analyze.yml
-name: UCOF Analysis (CLI)
+name: Codebase Doctor Analysis (CLI)
 
 on:
   push:
@@ -258,24 +258,24 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Install UCOF
+      - name: Install Codebase Doctor
         run: |
-          git clone https://github.com/nativardi/ucof.git /tmp/ucof
-          cd /tmp/ucof/cli-standalone
+          git clone https://github.com/nativardi/codebase-doctor.git /tmp/codebase-doctor
+          cd /tmp/codebase-doctor/cli-standalone
           npm install
 
       - name: Run Analysis
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: |
-          node /tmp/ucof/cli-standalone/ucof.js analyze "$GITHUB_WORKSPACE" --ci > ucof-report.json
+          node /tmp/codebase-doctor/cli-standalone/codebase-doctor.js analyze "$GITHUB_WORKSPACE" --ci > codebase-doctor-report.json
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: ucof-report
+          name: codebase-doctor-report
           path: |
-            ucof-report.json
+            codebase-doctor-report.json
             .optimization/report.md
             .optimization/report.html
             .optimization/execution-plan.md
@@ -294,7 +294,7 @@ Because each run makes model calls, running on `main`, on a schedule, or by manu
 The CLI is not a prompt wrapper; it is an analysis engine.
 
 1. **Scans your project.** Reads real files, respects `.gitignore`, skips binaries and files over 100KB, and logs skip reasons.
-2. **Loads the lenses.** Domain prompts come from `skills/ucof/references/domains/`, and the finding contract is injected into every prompt.
+2. **Loads the lenses.** Domain prompts come from `skills/codebase-doctor/references/domains/`, and the finding contract is injected into every prompt.
 3. **Runs domains in parallel.** Configurable concurrency (default 3) via `Promise.allSettled()`, with `max_tokens` of 16000 per call.
 4. **Falls back gracefully.** If Opus is unavailable it tries Sonnet, then Haiku, with a warning in the report.
 5. **Survives partial failures.** If 3 of 8 domains fail you still get a report for the other 5, with an explicit "5/8 domains analyzed" note.
@@ -309,7 +309,7 @@ What it does **not** do: verify findings, or implement fixes. For those use the 
 
 ```
 cli-standalone/
-├── ucof.js              # Thin entrypoint
+├── codebase-doctor.js              # Thin entrypoint
 └── lib/
     ├── scanner.js       # Project walker + manifest builder
     ├── config.js        # Config loading with precedence; model + pricing defaults
@@ -334,23 +334,23 @@ npm test
 
 ```bash
 # Daily local use
-ucof analyze /path/to/my/project
+codebase-doctor analyze /path/to/my/project
 
 # Weekly re-check with cached discovery
-ucof analyze /path/to/my/project --skip-discovery
+codebase-doctor analyze /path/to/my/project --skip-discovery
 
 # Multiple projects
 for project in ~/projects/*; do
-  ucof analyze "$project"
+  codebase-doctor analyze "$project"
 done
 
 # Parallel projects
-(ucof analyze /path/to/project-a &)
-(ucof analyze /path/to/project-b &)
+(codebase-doctor analyze /path/to/project-a &)
+(codebase-doctor analyze /path/to/project-b &)
 wait
 
 # Performance troubleshooting
-ucof analyze /path/to/project --skip-discovery
+codebase-doctor analyze /path/to/project --skip-discovery
 cat /path/to/project/.optimization/performance-findings.json
 ```
 
@@ -386,15 +386,15 @@ The CLI has no verifier pass. Each finding is a model's claim from the files it 
 
 ## Troubleshooting
 
-### "Command not found: ucof"
+### "Command not found: codebase-doctor"
 
 ```bash
 # Use the full path
-~/ucof/cli-standalone/ucof.js analyze /path/to/project
+~/codebase-doctor/cli-standalone/codebase-doctor.js analyze /path/to/project
 
 # Or re-link / alias
-cd ~/ucof/cli-standalone && npm link
-alias ucof='~/ucof/cli-standalone/ucof.js'
+cd ~/codebase-doctor/cli-standalone && npm link
+alias codebase-doctor='~/codebase-doctor/cli-standalone/codebase-doctor.js'
 ```
 
 ### "API key not found"
@@ -410,13 +410,13 @@ echo 'export ANTHROPIC_API_KEY="sk-ant-..."' >> ~/.zshrc && source ~/.zshrc
 Use an absolute path and confirm it exists:
 
 ```bash
-ls /Users/me/my-app
-ucof analyze /Users/me/my-app
+ls /path/to/my-app
+codebase-doctor analyze /path/to/my-app
 ```
 
 ### "No analysis found" (when running fix)
 
-Run `ucof analyze` first.
+Run `codebase-doctor analyze` first.
 
 ### "Analysis seems incomplete"
 
@@ -433,4 +433,4 @@ Install Node.js 18 or newer from https://nodejs.org/ and verify with `node --ver
 - [Main README](../README.md): the plugin, quick start
 - [Plugin vs CLI](../VERSIONS.md)
 - [Methodology](../METHODOLOGY.md)
-- [Finding contract](../skills/ucof/references/finding-contract.md)
+- [Finding contract](../skills/codebase-doctor/references/finding-contract.md)

@@ -1,13 +1,13 @@
 {
-  "name": "ucof",
+  "name": "codebase-doctor",
   "owner": { "name": "Nati Vardi", "url": "https://github.com/nativardi" },
-  "metadata": { "description": "Universal Codebase Optimization Framework", "version": "3.1.0" },
+  "metadata": { "description": "Codebase Doctor", "version": "4.0.0" },
   "plugins": [
     {
-      "name": "ucof",
+      "name": "codebase-doctor",
       "source": "./",
       "description": "Multi-agent codebase analysis with verified findings, health score, execution plan, and a review-gated fix job.",
-      "version": "3.1.0"
+      "version": "4.0.0"
     }
   ]
 }

@@ -8,7 +8,7 @@ const { runAnalysis } = require('../lib/orchestrator');
 
 function copyFixture() {
   const sourcePath = path.join(__dirname, 'fixtures', 'smoke-project');
-  const destinationPath = fs.mkdtempSync(path.join(os.tmpdir(), 'ucof-html-'));
+  const destinationPath = fs.mkdtempSync(path.join(os.tmpdir(), 'codebase-doctor-html-'));
   fs.cpSync(sourcePath, destinationPath, { recursive: true });
   return destinationPath;
 }
@@ -106,11 +106,11 @@ test('trend diff reports score changes and finding deltas', async () => {
 });
 
 test('github actions workflow template references both engines and uploads the report', () => {
-  const workflowPath = path.join(__dirname, '..', '..', '.github', 'workflows', 'ucof.yml');
+  const workflowPath = path.join(__dirname, '..', '..', '.github', 'workflows', 'codebase-doctor.yml');
   const workflow = fs.readFileSync(workflowPath, 'utf8');
 
-  assert.match(workflow, /^name: UCOF$/m);
+  assert.match(workflow, /^name: Codebase Doctor$/m);
   assert.match(workflow, /--plugin-dir/);
-  assert.match(workflow, /ucof\.js" analyze/);
+  assert.match(workflow, /codebase-doctor\.js" analyze/);
   assert.match(workflow, /\.optimization\/report\.json/);
 });

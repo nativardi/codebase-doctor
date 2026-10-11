@@ -227,7 +227,7 @@ async function runAnalysis(projectPath, options = {}, dependencies = {}) {
   const cachedRun = !options.force ? readJson(cachePaths.latestRunPath) : null;
 
   logger.log('\n╔════════════════════════════════════════════════════════════╗', 'cyan');
-  logger.log('║     Universal Codebase Optimization Framework (UCOF)       ║', 'cyan');
+  logger.log('║     Codebase Doctor       ║', 'cyan');
   logger.log('╚════════════════════════════════════════════════════════════╝', 'cyan');
   logger.log(`\nProject: ${projectPath}`, 'bright');
   logger.log(`Output:  ${outputPath}`, 'bright');
@@ -441,7 +441,7 @@ async function runFixMode(projectPath, options = {}) {
   const reportPath = path.join(projectPath, config.outputDir, 'report.json');
 
   if (!fs.existsSync(reportPath)) {
-    logger.error('No analysis found. Run "ucof analyze" first.');
+    logger.error('No analysis found. Run "codebase-doctor analyze" first.');
     process.exitCode = 1;
     return;
   }
@@ -476,7 +476,7 @@ function runReport(projectPath, options = {}) {
   const reportPath = path.join(projectPath, config.outputDir, 'report.md');
 
   if (!fs.existsSync(reportPath)) {
-    throw new Error('No report found. Run "ucof analyze" first.');
+    throw new Error('No report found. Run "codebase-doctor analyze" first.');
   }
 
   return fs.readFileSync(reportPath, 'utf8');

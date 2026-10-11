@@ -1,10 +1,10 @@
 # Cleanup mode
 
-`/ucof cleanup [path]` is a whole-repository sweep for code that can go: dead code, duplicate logic, legacy shims and finished flags, redundant queries, abandoned files, YAGNI complexity, and unused dependencies. It audits read-only, has every candidate adversarially verified, applies the proven cuts in isolated worktrees, has each diff reviewed, and hands you patches. It never commits or pushes.
+`/codebase-doctor cleanup [path]` is a whole-repository sweep for code that can go: dead code, duplicate logic, legacy shims and finished flags, redundant queries, abandoned files, YAGNI complexity, and unused dependencies. It audits read-only, has every candidate adversarially verified, applies the proven cuts in isolated worktrees, has each diff reviewed, and hands you patches. It never commits or pushes.
 
 "Aggressive but safe": cut hard where a zero-caller proof and a reachability check exist; report, never cut, where they do not. Anything that needs a product or wording decision is reported, not applied and not asked about mid-run.
 
-Not for one feature (use `analyze --domains`) and not for file splits or extractions (use `/ucof refactor`).
+Not for one feature (use `analyze --domains`) and not for file splits or extractions (use `/codebase-doctor refactor`).
 
 ## Phase 0: discover the project's conventions
 
@@ -15,11 +15,11 @@ Before any dispatch, the orchestrator reads (as data, per the operating rules) t
 - `kill_switched`: features behind an env flag or per-tenant opt-in that is default-off. **Kill-switched is not dead.** A pre-launch feature behind a flag stays.
 - `prior_reports`: earlier `.optimization/cleanup/report.md` files. Items they mark refuted or deferred are not re-proposed.
 
-If the scout has not run for this repository, dispatch `ucof:ucof-scout` first and keep its output; analysts get its `tech_stack`, `structure`, and `entry_points`.
+If the scout has not run for this repository, dispatch `codebase-doctor:doctor-scout` first and keep its output; analysts get its `tech_stack`, `structure`, and `entry_points`.
 
 ## Phase 1: audit (seven analysts in parallel, read-only)
 
-Dispatch seven `ucof:ucof-analyst` agents in one message. Each gets `PROJECT_ROOT`, this file's path with the instruction "your lens is the brief named <X> in the Briefs section below; read it and the finding contract in full", the contract path, the scout context, and `context.json`. Pass `model: "opus"` for A, B, C, F; leave D, E, G on the default.
+Dispatch seven `codebase-doctor:doctor-analyst` agents in one message. Each gets `PROJECT_ROOT`, this file's path with the instruction "your lens is the brief named <X> in the Briefs section below; read it and the finding contract in full", the contract path, the scout context, and `context.json`. Pass `model: "opus"` for A, B, C, F; leave D, E, G on the default.
 
 Findings use the [finding contract](finding-contract.md) with `domain: "quality"` and a `category` from the brief. Every finding adds to `rationale` the **evidence line**: the search that proves zero callers (exact pattern and scope), the reachability checks done, and the line count it removes. Recommendation `effort` stays the contract's scale.
 
@@ -41,7 +41,7 @@ Search with `grep -rn` over the whole repository excluding only `.git`, dependen
 
 ## Phase 2: verify
 
-Group findings by brief and dispatch one `ucof:ucof-verifier` per non-empty group in one message, with the findings and: "Cleanup mode: a dead-code claim is confirmed only if your own search and the reachability checklist in <cleanup.md path> find no live use; a duplicate claim only if the two contracts are identical on every input you can construct." Merge verdicts as the analyze job does. Refuted items are kept in the report, never applied.
+Group findings by brief and dispatch one `codebase-doctor:doctor-verifier` per non-empty group in one message, with the findings and: "Cleanup mode: a dead-code claim is confirmed only if your own search and the reachability checklist in <cleanup.md path> find no live use; a duplicate claim only if the two contracts are identical on every input you can construct." Merge verdicts as the analyze job does. Refuted items are kept in the report, never applied.
 
 Write `<PROJECT_ROOT>/.optimization/cleanup/findings.json` (all findings with verification).
 
@@ -59,7 +59,7 @@ Group candidates into **slices with disjoint file sets** (one slice per brief by
 
 ## Phase 4: apply (fixers in worktrees)
 
-Dispatch one `ucof:ucof-fixer` per slice (at most four at once), each with `PROJECT_ROOT`, the slice's findings, `context.json`'s commands, and:
+Dispatch one `codebase-doctor:doctor-fixer` per slice (at most four at once), each with `PROJECT_ROOT`, the slice's findings, `context.json`'s commands, and:
 
 > Mode: cleanup. Read the Builder rules in <cleanup.md path>; they replace steps 4 and 5 of your definition. Edit only these files and the tests that cover them: <slice file list>. Use `findingId: "<slice name>"`. Return your JSON plus `worktreePath` and `itemsSkipped: [{title, reason}]`.
 
@@ -76,7 +76,7 @@ Dispatch one `ucof:ucof-fixer` per slice (at most four at once), each with `PROJ
 
 ## Phase 5: review
 
-Dispatch `ucof:ucof-fix-reviewer` per slice in parallel with the slice findings, the fixer JSON, the `worktreePath`, and:
+Dispatch `codebase-doctor:doctor-fix-reviewer` per slice in parallel with the slice findings, the fixer JSON, the `worktreePath`, and:
 
 > Mode: cleanup. Check 4 becomes: the project's existing tests, lint, and typecheck pass after the change, and no test assertion that guarded a safety property was weakened or deleted. Also hunt for: a deleted symbol still referenced (dynamic import, string path, job registration, test mock, doc or help text naming it); a deleted route reachable by an external client; a behavior change hidden in a deletion (a removed catch changes what a caller receives); merged schemas or helpers that were not identical; cache-key drift; conditional fetching that leaves a consumer assuming loaded data.
 
@@ -100,6 +100,6 @@ Report to the user under 20 lines: lines cut per slice, review verdicts, patch p
 
 - "The audit said it is dead": only the fixer's own search plus the reachability checklist makes it dead.
 - "Behind a flag, so legacy": default-off is not dead.
-- "I will split this file while I am here": no; note it for `/ucof refactor`.
+- "I will split this file while I am here": no; note it for `/codebase-doctor refactor`.
 - "It is the same idea": two helpers with different null or error behavior are not duplicates.
 - A diff touching files outside the slice's list.

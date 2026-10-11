@@ -1,5 +1,5 @@
 {
-  "name": "ucof-smoke-project",
+  "name": "codebase-doctor-smoke-project",
   "version": "1.0.0",
   "scripts": {
     "test": "node tests/app.test.js"

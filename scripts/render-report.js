@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Turns a UCOF run file (written by the plugin skill) into the canonical artifacts:
+// Turns a Codebase Doctor run file (written by the plugin skill) into the canonical artifacts:
 // report.json, report.md, report.html, execution-plan.md, plus compatibility files.
 //
 // Usage: node scripts/render-report.js <project-path> [run-file] [--output-dir .optimization]

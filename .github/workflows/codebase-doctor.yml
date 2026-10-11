@@ -1,4 +1,4 @@
-# Runs UCOF against this repository on demand or on pull requests.
+# Runs Codebase Doctor against this repository on demand or on pull requests.
 #
 # Two paths. The plugin path (default) runs the full pipeline, including the verifier pass,
 # through headless Claude Code. The CLI path calls the Anthropic API directly and produces
@@ -6,7 +6,7 @@
 #
 # Both need ANTHROPIC_API_KEY in repository secrets.
 
-name: UCOF
+name: Codebase Doctor
 
 on:
   pull_request:
@@ -19,7 +19,7 @@ on:
         options: [plugin, cli]
 
 jobs:
-  ucof:
+  codebase-doctor:
     runs-on: ubuntu-latest
     env:
       ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
@@ -31,27 +31,27 @@ jobs:
         with:
           node-version: 20
 
-      - name: Fetch UCOF
-        run: git clone --depth 1 https://github.com/nativardi/ucof.git "$RUNNER_TEMP/ucof"
+      - name: Fetch Codebase Doctor
+        run: git clone --depth 1 https://github.com/nativardi/codebase-doctor.git "$RUNNER_TEMP/codebase-doctor"
 
       - name: Analyze with the plugin (headless Claude Code)
         if: env.ENGINE == 'plugin'
         run: |
           npm install -g @anthropic-ai/claude-code
-          claude -p --plugin-dir "$RUNNER_TEMP/ucof" --permission-mode bypassPermissions \
-            "/ucof analyze $GITHUB_WORKSPACE" > ucof-summary.txt
-          cat ucof-summary.txt
+          claude -p --plugin-dir "$RUNNER_TEMP/codebase-doctor" --permission-mode bypassPermissions \
+            "/codebase-doctor analyze $GITHUB_WORKSPACE" > codebase-doctor-summary.txt
+          cat codebase-doctor-summary.txt
 
       - name: Analyze with the CLI (direct API)
         if: env.ENGINE == 'cli'
         run: |
-          npm --prefix "$RUNNER_TEMP/ucof/cli-standalone" install
-          node "$RUNNER_TEMP/ucof/cli-standalone/ucof.js" analyze "$GITHUB_WORKSPACE" --ci > /dev/null || true
+          npm --prefix "$RUNNER_TEMP/codebase-doctor/cli-standalone" install
+          node "$RUNNER_TEMP/codebase-doctor/cli-standalone/codebase-doctor.js" analyze "$GITHUB_WORKSPACE" --ci > /dev/null || true
 
       - name: Upload report
         uses: actions/upload-artifact@v4
         with:
-          name: ucof-report
+          name: codebase-doctor-report
           path: |
             .optimization/report.json
             .optimization/report.md
@@ -67,7 +67,7 @@ jobs:
             const report = JSON.parse(fs.readFileSync('.optimization/report.json', 'utf8'));
             const v = report.verification || {};
             const body = [
-              '## UCOF',
+              '## Codebase Doctor',
               '',
               `Health score: **${report.scores.overall}/100**` + (report.trend?.scoreChange ? ` (${report.trend.scoreChange > 0 ? '+' : ''}${report.trend.scoreChange})` : ''),
               `Critical ${report.severityCounts.critical} · High ${report.severityCounts.high} · Medium ${report.severityCounts.medium} · Low ${report.severityCounts.low}`,

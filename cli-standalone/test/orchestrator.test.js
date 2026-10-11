@@ -13,7 +13,7 @@ const { loadResolvedConfig, DOMAIN_ORDER } = require('../lib/config');
 
 function copyFixture() {
   const sourcePath = path.join(__dirname, 'fixtures', 'smoke-project');
-  const destinationPath = fs.mkdtempSync(path.join(os.tmpdir(), 'ucof-smoke-'));
+  const destinationPath = fs.mkdtempSync(path.join(os.tmpdir(), 'codebase-doctor-smoke-'));
   fs.cpSync(sourcePath, destinationPath, { recursive: true });
   return destinationPath;
 }
@@ -278,7 +278,7 @@ test('canonical report, execution plan, and compatibility artifacts are generate
 test('config file precedence and invalid config handling are deterministic', async () => {
   const projectPath = copyFixture();
   fs.writeFileSync(
-    path.join(projectPath, '.ucof.config.json'),
+    path.join(projectPath, '.codebase-doctor.config.json'),
     JSON.stringify({ concurrency: 1, fileSizeLimitBytes: 64 }, null, 2),
   );
 
@@ -292,7 +292,7 @@ test('config file precedence and invalid config handling are deterministic', asy
   assert.equal(result.report.config.fileSizeLimitBytes, 64);
 
   const badProjectPath = copyFixture();
-  fs.writeFileSync(path.join(badProjectPath, '.ucof.config.json'), '{not-json');
+  fs.writeFileSync(path.join(badProjectPath, '.codebase-doctor.config.json'), '{not-json');
   await assert.rejects(() => runAnalysis(badProjectPath, { silent: true }, { executor: createFakeExecutor([]) }));
 });
 
@@ -345,12 +345,12 @@ test('ci mode emits canonical JSON and sets the expected exit code', async () =>
 test('plugin layout: every domain has a lens, agents referenced by the skill exist, manifest is valid', () => {
   const root = path.join(__dirname, '..', '..');
   for (const domain of DOMAIN_ORDER) {
-    assert.ok(fs.existsSync(path.join(root, 'skills', 'ucof', 'references', 'domains', `${domain}.md`)), `lens missing: ${domain}`);
+    assert.ok(fs.existsSync(path.join(root, 'skills', 'codebase-doctor', 'references', 'domains', `${domain}.md`)), `lens missing: ${domain}`);
   }
-  assert.ok(fs.existsSync(path.join(root, 'skills', 'ucof', 'references', 'finding-contract.md')));
+  assert.ok(fs.existsSync(path.join(root, 'skills', 'codebase-doctor', 'references', 'finding-contract.md')));
 
-  const skill = fs.readFileSync(path.join(root, 'skills', 'ucof', 'SKILL.md'), 'utf8');
-  const referencedAgents = [...skill.matchAll(/ucof:(ucof-[a-z-]+)/g)].map((match) => match[1]);
+  const skill = fs.readFileSync(path.join(root, 'skills', 'codebase-doctor', 'SKILL.md'), 'utf8');
+  const referencedAgents = [...skill.matchAll(/codebase-doctor:(doctor-[a-z-]+)/g)].map((match) => match[1]);
   assert.ok(referencedAgents.length >= 5);
   for (const agent of new Set(referencedAgents)) {
     const agentPath = path.join(root, 'agents', `${agent}.md`);
@@ -360,23 +360,23 @@ test('plugin layout: every domain has a lens, agents referenced by the skill exi
   }
 
   for (const mode of ['cleanup', 'refactor']) {
-    assert.ok(fs.existsSync(path.join(root, 'skills', 'ucof', 'references', `${mode}.md`)), `mode reference missing: ${mode}`);
+    assert.ok(fs.existsSync(path.join(root, 'skills', 'codebase-doctor', 'references', `${mode}.md`)), `mode reference missing: ${mode}`);
     assert.ok(skill.includes(`references/${mode}.md`), `SKILL.md does not route ${mode}`);
   }
   assert.ok(skill.split('\n').length < 300, 'SKILL.md must stay under 300 lines');
 
   const manifest = JSON.parse(fs.readFileSync(path.join(root, '.claude-plugin', 'plugin.json'), 'utf8'));
-  assert.equal(manifest.name, 'ucof');
+  assert.equal(manifest.name, 'codebase-doctor');
   const marketplace = JSON.parse(fs.readFileSync(path.join(root, '.claude-plugin', 'marketplace.json'), 'utf8'));
   assert.equal(marketplace.plugins[0].version, manifest.version);
   assert.equal(marketplace.metadata.version, manifest.version);
-  // No stray skills: only skills/ucof may contain a SKILL.md, or the plugin would expose eight extra skills.
+  // No stray skills: only skills/codebase-doctor may contain a SKILL.md, or the plugin would expose eight extra skills.
   const skillDirs = fs.readdirSync(path.join(root, 'skills')).filter((entry) => fs.existsSync(path.join(root, 'skills', entry, 'SKILL.md')));
-  assert.deepEqual(skillDirs, ['ucof']);
+  assert.deepEqual(skillDirs, ['codebase-doctor']);
 });
 
 test('render-report adapter scores counted findings only and keeps ids stable across runs', () => {
-  const projectPath = fs.mkdtempSync(path.join(os.tmpdir(), 'ucof-render-'));
+  const projectPath = fs.mkdtempSync(path.join(os.tmpdir(), 'codebase-doctor-render-'));
   const outputPath = path.join(projectPath, '.optimization');
   fs.mkdirSync(outputPath, { recursive: true });
   const finding = (overrides) => ({

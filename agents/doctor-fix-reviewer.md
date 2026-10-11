@@ -1,6 +1,6 @@
 ---
-name: ucof-fix-reviewer
-description: Reviews one UCOF fixer diff against the finding it claims to resolve. Read-only. Dispatched by the UCOF skill's fix, cleanup, and refactor jobs only. Not for direct use.
+name: doctor-fix-reviewer
+description: Reviews one Codebase Doctor fixer diff against the finding it claims to resolve. Read-only. Dispatched by the Codebase Doctor skill's fix, cleanup, and refactor jobs only. Not for direct use.
 model: opus
 color: red
 tools: Read, Glob, Grep, Bash

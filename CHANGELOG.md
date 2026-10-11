@@ -1,6 +1,18 @@
-# UCOF Changelog
+# Codebase Doctor Changelog
 
-## v3.1.0 - Cleanup and refactor jobs (Current)
+## v4.0.0 - Codebase Doctor (Current)
+
+Breaking: the project was renamed from UCOF (Universal Codebase Optimization Framework) to Codebase Doctor for its open-source release. No analysis behavior changed.
+
+- **Command:** `/ucof` is now `/codebase-doctor` with modes `analyze`, `fix`, `cleanup`, `refactor`. Skill directory is `skills/codebase-doctor/`.
+- **Plugin and marketplace** are both named `codebase-doctor`; install with `/plugin marketplace add nativardi/codebase-doctor` and `/plugin install codebase-doctor@codebase-doctor`.
+- **Agents** `ucof-*` are now `doctor-scout`, `doctor-analyst`, `doctor-verifier`, `doctor-fixer`, `doctor-fix-reviewer`.
+- **CLI:** binary `codebase-doctor` (was `ucof`), config `.codebase-doctor.config.json` (was `.ucof.config.json`), env `DOCTOR_PATH` (was `UCOF_PATH`).
+- **Unchanged:** the `.optimization/` output directory, the finding contract, scoring, and the read-only analysis / review-gated patch model.
+- **Docs:** README rewritten for a community audience, `CONTRIBUTING.md` added, internal working files removed.
+- **Migration from `/ucof`:** remove the old `ucof` plugin, install `codebase-doctor`, rename any `.ucof.config.json`, and replace `/ucof` with `/codebase-doctor` in scripts and CI. Entries below keep the old name as history.
+
+## v3.1.0 - Cleanup and refactor jobs
 
 Two new jobs on the `/ucof` front desk, both generic for any repository and both under the same gated-write model as `fix`.
 

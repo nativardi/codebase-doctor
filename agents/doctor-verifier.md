@@ -1,6 +1,6 @@
 ---
-name: ucof-verifier
-description: Read-only adversarial verifier dispatched by the UCOF skill after domain analysis. Receives one domain's candidate findings and tries to refute each one against the code. Not for direct use.
+name: doctor-verifier
+description: Read-only adversarial verifier dispatched by the Codebase Doctor skill after domain analysis. Receives one domain's candidate findings and tries to refute each one against the code. Not for direct use.
 model: opus
 color: yellow
 tools: Read, Glob, Grep, Bash

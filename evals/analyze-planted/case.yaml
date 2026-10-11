@@ -1,6 +1,6 @@
 schema_version: "1.1"
 name: analyze-planted
-description: Run /ucof analyze on the planted fixture and check the headline findings and decoy handling.
+description: Run /codebase-doctor analyze on the planted fixture and check the headline findings and decoy handling.
 tags: [analyze, planted]
 runs: 1
 context:

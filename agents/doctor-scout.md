@@ -1,6 +1,6 @@
 ---
-name: ucof-scout
-description: Read-only discovery pass dispatched by the UCOF skill before domain analysis. Maps the stack, entry points, and hot files, and decides which domain lenses apply. Not for direct use.
+name: doctor-scout
+description: Read-only discovery pass dispatched by the Codebase Doctor skill before domain analysis. Maps the stack, entry points, and hot files, and decides which domain lenses apply. Not for direct use.
 model: haiku
 color: cyan
 tools: Read, Glob, Grep, Bash

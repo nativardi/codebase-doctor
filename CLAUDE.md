@@ -1,4 +1,4 @@
-# UCOF — Claude Code Project Rules
+# Codebase Doctor — Project Rules
 
 Instructions for AI assistants working on this repository. The repository root is the Claude Code plugin root.
 
@@ -6,15 +6,15 @@ Instructions for AI assistants working on this repository. The repository root i
 
 ## 1. Layout (what lives where)
 
-- `skills/ucof/SKILL.md` — the `/ucof` front desk (analyze, fix, cleanup, refactor). Keep it under 300 lines; detail goes in `references/`.
-- `skills/ucof/references/domains/*.md` — the eight domain lenses. Single source of truth for what each analyst hunts; the CLI reads the same files.
-- `skills/ucof/references/cleanup.md`, `refactor.md` — the cleanup and refactor job procedures (briefs, builder rules, review prompts).
-- `skills/ucof/references/finding-contract.md` — the finding schema, severity table, scoring rule. Single source of truth; never restate it elsewhere, link to it.
+- `skills/codebase-doctor/SKILL.md` — the `/codebase-doctor` front desk (analyze, fix, cleanup, refactor). Keep it under 300 lines; detail goes in `references/`.
+- `skills/codebase-doctor/references/domains/*.md` — the eight domain lenses. Single source of truth for what each analyst hunts; the CLI reads the same files.
+- `skills/codebase-doctor/references/cleanup.md`, `refactor.md` — the cleanup and refactor job procedures (briefs, builder rules, review prompts).
+- `skills/codebase-doctor/references/finding-contract.md` — the finding schema, severity table, scoring rule. Single source of truth; never restate it elsewhere, link to it.
 - `agents/*.md` — scout, analyst, verifier, fixer, fix-reviewer. Every agent sets an explicit `model:`.
 - `scripts/render-report.js` — deterministic rendering (ids, dedupe, score, plan, HTML) built on `cli-standalone/lib/reporter.js`. Scoring and planning live in code, never in prompts.
 - `cli-standalone/` — the headless API alternative. Tests live in `cli-standalone/test/`.
 
-**Rule:** Only `skills/ucof/` may contain a `SKILL.md`. Any other `skills/<x>/SKILL.md` becomes a separately exposed skill. A test enforces this.
+**Rule:** Only `skills/codebase-doctor/` may contain a `SKILL.md`. Any other `skills/<x>/SKILL.md` becomes a separately exposed skill. A test enforces this.
 
 ---
 
@@ -28,7 +28,7 @@ The HTML report at `cli-standalone/lib/reporter.js` (`generateHtmlFromReport`) h
 
 ## 3. Documentation Discipline
 
-Docs: `README.md`, `METHODOLOGY.md`, `VERSIONS.md`, `CHANGELOG.md`, `cli-standalone/README.md`, `skills/ucof/references/methodology.md`.
+Docs: `README.md`, `METHODOLOGY.md`, `VERSIONS.md`, `CHANGELOG.md`, `cli-standalone/README.md`, `skills/codebase-doctor/references/methodology.md`.
 
 **Rule:** When documentation conflicts with behavior, fix one to match the other in the same change. Never thin documentation during a refactor: move content or replace it with equal or greater depth.
 
@@ -46,7 +46,7 @@ Docs: `README.md`, `METHODOLOGY.md`, `VERSIONS.md`, `CHANGELOG.md`, `cli-standal
 
 Analysis never modifies the analyzed repository outside its `.optimization/` output directory. Scout, analyst, and verifier agents are read-only by tool set.
 
-The fix job may write code, under these constraints: it works in an isolated git worktree, every diff passes the fix-reviewer, patches are written to `.optimization/patches/`, and nothing touches the user's working tree until the user picks which patches to apply. UCOF never commits, pushes, or opens pull requests.
+The fix job may write code, under these constraints: it works in an isolated git worktree, every diff passes the fix-reviewer, patches are written to `.optimization/patches/`, and nothing touches the user's working tree until the user picks which patches to apply. Codebase Doctor never commits, pushes, or opens pull requests.
 
 **Rule:** Do not loosen any of those constraints. Do not add writes to the analyzed project from the analyze job.
 
@@ -65,17 +65,3 @@ Deferred features: interactive REPL, new micro-domains (secrets/CVE/dead-code sc
 `cli-standalone/test/fixtures/planted-project/` holds planted issues and decoys; the key is `cli-standalone/test/fixtures/planted-project.key.json` (kept outside the project so analysts cannot read it). `scripts/score-eval.js <report.json> <key.json>` scores a run.
 
 **Rule:** When changing an agent prompt or a lens, re-run the plugin against the fixture and compare precision, recall, and decoys tripped with the numbers in `CHANGELOG.md`. Record new numbers there.
-
-## Claude Doctor
-
-**Last audited:** 2026-10-11
-
-**Audit status:** Healthy
-
-**Model guidance**
-- **Fable:** Run `npm test` and `claude plugin validate .` before declaring done; keep the finding contract as the one schema.
-- **Opus:** The read-only analysis stance and the gated fix path are the boundaries; ask before crossing either.
-- **Sonnet:** Invoke `frontend-design` before touching `generateHtmlFromReport`; edit lenses, not orchestration, for analysis improvements.
-
-**Doctor notes**
-- v3.0.0 restructured the repo as a plugin; the `SKILL.md` sync rule went away with the duplicate file.

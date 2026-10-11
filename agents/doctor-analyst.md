@@ -1,6 +1,6 @@
 ---
-name: ucof-analyst
-description: Read-only domain analyst dispatched by the UCOF skill, one per applicable lens (security, data, backend, external, frontend, infrastructure, performance, quality). Traces data flows across files and returns structured findings. Not for direct use.
+name: doctor-analyst
+description: Read-only domain analyst dispatched by the Codebase Doctor skill, one per applicable lens (security, data, backend, external, frontend, infrastructure, performance, quality). Traces data flows across files and returns structured findings. Not for direct use.
 model: sonnet
 color: blue
 tools: Read, Glob, Grep, Bash

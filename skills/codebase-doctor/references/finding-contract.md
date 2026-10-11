@@ -1,4 +1,4 @@
-# UCOF Finding Contract
+# Codebase Doctor Finding Contract
 
 The single source of truth for what a finding looks like. Analysts produce findings in this shape, verifiers add the `verification` block, and `scripts/render-report.js` turns the result into `report.json`, `report.md`, `report.html`, and `execution-plan.md`. The CLI shares this contract.
 

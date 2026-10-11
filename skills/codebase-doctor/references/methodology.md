@@ -1,4 +1,4 @@
-# UCOF Methodology (condensed)
+# Codebase Doctor Methodology (condensed)
 
 The skill reads this file for the design rationale. The full document is `METHODOLOGY.md` at the repository root. The finding schema is `finding-contract.md` in this directory; the checklists are the lens files in `domains/`.
 
@@ -47,9 +47,9 @@ Severity is impact if the finding is real; uncertainty goes in `confidence`. Cri
 
 - Candidates: confirmed or downgraded findings, or unverified findings with high confidence. Never refuted ones.
 - One question up front to select findings (top fixes preselected), or `--ids`.
-- One `ucof-fixer` (Sonnet) per finding, in its own isolated git worktree, at most four at once. It fixes the root cause, adds a test, runs the project's tests, and returns a diff. It never commits or pushes.
-- Each diff is reviewed by `ucof-fix-reviewer` (Opus, read-only). Approve only if the mechanism is removed on every path, the change is targeted, it introduces no new weakness or behavior change, and it is tested. One retry on rejection with the reviewer's required changes; a second rejection stays rejected.
-- Approved diffs go to `.optimization/patches/<id>.patch`. One final question to apply them with `git apply --3way`. UCOF never commits or pushes.
+- One `doctor-fixer` (Sonnet) per finding, in its own isolated git worktree, at most four at once. It fixes the root cause, adds a test, runs the project's tests, and returns a diff. It never commits or pushes.
+- Each diff is reviewed by `doctor-fix-reviewer` (Opus, read-only). Approve only if the mechanism is removed on every path, the change is targeted, it introduces no new weakness or behavior change, and it is tested. One retry on rejection with the reviewer's required changes; a second rejection stays rejected.
+- Approved diffs go to `.optimization/patches/<id>.patch`. One final question to apply them with `git apply --3way`. Codebase Doctor never commits or pushes.
 
 ## Execution plan
 

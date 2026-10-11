@@ -1,6 +1,6 @@
-# UCOF Methodology - How It Works
+# Codebase Doctor Methodology - How It Works
 
-This document explains what UCOF does, how it finds issues, and why the pipeline is shaped the way it is. The plugin and the CLI share the same lenses and finding contract; where they differ, [Pipeline differences: plugin and CLI](#pipeline-differences-plugin-and-cli) says so. A condensed version that the skill reads at run time lives at [skills/ucof/references/methodology.md](./skills/ucof/references/methodology.md).
+This document explains what Codebase Doctor does, how it finds issues, and why the pipeline is shaped the way it is. The plugin and the CLI share the same lenses and finding contract; where they differ, [Pipeline differences: plugin and CLI](#pipeline-differences-plugin-and-cli) says so. A condensed version that the skill reads at run time lives at [skills/codebase-doctor/references/methodology.md](./skills/codebase-doctor/references/methodology.md).
 
 ---
 
@@ -20,7 +20,7 @@ This document explains what UCOF does, how it finds issues, and why the pipeline
 
 ## Pipeline (plugin)
 
-The `/ucof analyze` job runs these stages. The skill orchestrates; agents do the reading.
+The `/codebase-doctor analyze` job runs these stages. The skill orchestrates; agents do the reading.
 
 ```
 scout -> analysts (parallel, one per lens) -> verifiers (parallel, one per domain)
@@ -29,7 +29,7 @@ scout -> analysts (parallel, one per lens) -> verifiers (parallel, one per domai
 
 ### 1. Scout
 
-`ucof-scout` (Haiku, read-only) maps the project: tech stack, directory structure, entry points, quality indicators (tests, CI, linting, type checking, monitoring), which of the eight lenses apply, and the hot files for each lens. Its output is saved as `.optimization/discovery.json`. If you passed `--domains`, the skill overrides which lenses apply. If the scout fails, the skill builds a minimal discovery object from `git ls-files` and continues.
+`doctor-scout` (Haiku, read-only) maps the project: tech stack, directory structure, entry points, quality indicators (tests, CI, linting, type checking, monitoring), which of the eight lenses apply, and the hot files for each lens. Its output is saved as `.optimization/discovery.json`. If you passed `--domains`, the skill overrides which lenses apply. If the scout fails, the skill builds a minimal discovery object from `git ls-files` and continues.
 
 What the scout looks for:
 
@@ -56,7 +56,7 @@ What the scout looks for:
 
 ### 2. Analysts
 
-For every applicable lens the skill dispatches one `ucof-analyst`, all in a single message so they run in parallel. Analysts run on Sonnet; the skill passes `model: opus` for `security` and `external`, where a missed finding or a wrong severity is most expensive. Each analyst is given:
+For every applicable lens the skill dispatches one `doctor-analyst`, all in a single message so they run in parallel. Analysts run on Sonnet; the skill passes `model: opus` for `security` and `external`, where a missed finding or a wrong severity is most expensive. Each analyst is given:
 
 - the absolute project root,
 - the lens file and the finding contract, to read in full first,
@@ -66,7 +66,7 @@ Analysts are read-only and are not fed file dumps. They trace: start at the sour
 
 ### 3. Verifiers
 
-For every domain with at least one finding the skill dispatches one `ucof-verifier` (Opus, read-only), again in parallel. The verifier's job is to disprove. See [Why verification](#why-verification). Each verdict is merged into its finding as `verification: { verdict, reasoning, severity? }`. A verdict whose reasoning cites no `file:line` is downgraded to a visibly weak `confirmed` ("unverified: verifier gave no citation") so it still counts but is flagged. If a domain's verifier fails, that domain's findings stay unverified.
+For every domain with at least one finding the skill dispatches one `doctor-verifier` (Opus, read-only), again in parallel. The verifier's job is to disprove. See [Why verification](#why-verification). Each verdict is merged into its finding as `verification: { verdict, reasoning, severity? }`. A verdict whose reasoning cites no `file:line` is downgraded to a visibly weak `confirmed` ("unverified: verifier gave no citation") so it still counts but is flagged. If a domain's verifier fails, that domain's findings stay unverified.
 
 ### 4. Systemic patterns
 
@@ -144,14 +144,14 @@ The CLI (`cli-standalone/`) implements the same lenses and contract with a diffe
 
 | Aspect | Plugin | CLI |
 |--------|--------|-----|
-| Orchestration | Claude Code agents, dispatched by the `/ucof` skill | Node orchestrator calling the Anthropic API |
+| Orchestration | Claude Code agents, dispatched by the `/codebase-doctor` skill | Node orchestrator calling the Anthropic API |
 | How code is read | Agents trace with Read and Grep | Scanner builds a manifest; selected file contents are placed in the prompt |
 | Verification | Yes, one Opus verifier per domain, default refuted | No. Findings are unverified |
 | Synthesis | Main agent writes systemic patterns | One model call that asks only for systemic patterns |
 | Scoring, ids, plan | `render-report.js` (shared code) | `lib/reporter.js` (same code) |
 | Fix job | Yes, review-gated, worktree-isolated | No. Prints top fixes and writes `pr-descriptions.md` |
 | Caching | None | Hash-based, `.optimization/.cache` |
-| Config | Skill arguments | `.ucof.config.json` |
+| Config | Skill arguments | `.codebase-doctor.config.json` |
 | Models | Fixed in the agent definitions (Haiku, Sonnet, Opus) | `claude-haiku-4-5`, `claude-sonnet-5-5`, `claude-opus-5-5`, configurable |
 
 ### How the CLI executes analysis
@@ -164,16 +164,16 @@ The CLI (`cli-standalone/`) implements the same lenses and contract with a diffe
 6. **Canonical reporting.** `report.json` is the source of truth; the other artifacts derive from it.
 7. **Trend diffing.** A previous `report.json` yields new findings, resolved findings, and a score delta.
 
-The CLI loads its domain lenses from `skills/ucof/references/domains/`, injects the finding contract into the prompts, and asks the synthesis call only for systemic patterns; scoring and planning are in code. The CLI's token ceiling per call is `max_tokens` 16000, and cost estimates use a per-model `pricing` table in the config.
+The CLI loads its domain lenses from `skills/codebase-doctor/references/domains/`, injects the finding contract into the prompts, and asks the synthesis call only for systemic patterns; scoring and planning are in code. The CLI's token ceiling per call is `max_tokens` 16000, and cost estimates use a per-model `pricing` table in the config.
 
 ### CLI architecture
 
 ```
 cli-standalone/
-├── ucof.js              # Thin entrypoint (commands: analyze, report, fix)
+├── codebase-doctor.js              # Thin entrypoint (commands: analyze, report, fix)
 └── lib/
     ├── scanner.js       # Project file walker + manifest builder
-    ├── config.js        # Config loading (CLI flags > .ucof.config.json > defaults)
+    ├── config.js        # Config loading (CLI flags > .codebase-doctor.config.json > defaults)
     ├── cache.js         # Hash-based run caching
     ├── domains/index.js # Domain registry + file selectors (loads the lens files)
     ├── orchestrator.js  # Bounded parallel execution + fallback
@@ -184,9 +184,9 @@ cli-standalone/
 
 ## Domain lenses
 
-Each domain has one lens file under [`skills/ucof/references/domains/`](./skills/ucof/references/domains/). The lens file is canonical: analysts and the CLI both read it, so it is the one place a check is added, changed, or removed. Each lens contains: where to look first, how to trace, the checks, the category slugs, severity anchors, and "not a finding here". The summaries below describe intent; consult the lens file for the exact current list.
+Each domain has one lens file under [`skills/codebase-doctor/references/domains/`](./skills/codebase-doctor/references/domains/). The lens file is canonical: analysts and the CLI both read it, so it is the one place a check is added, changed, or removed. Each lens contains: where to look first, how to trace, the checks, the category slugs, severity anchors, and "not a finding here". The summaries below describe intent; consult the lens file for the exact current list.
 
-### Security ([security.md](./skills/ucof/references/domains/security.md))
+### Security ([security.md](./skills/codebase-doctor/references/domains/security.md))
 
 - **Authentication.** Can users reach data without logging in?
 - **Authorization.** Can users reach other users' data (IDOR)?
@@ -207,7 +207,7 @@ SEC-71c2: Hardcoded API key in config
    - Fix: environment variable; rotate the key
 ```
 
-### Data ([data.md](./skills/ucof/references/domains/data.md))
+### Data ([data.md](./skills/codebase-doctor/references/domains/data.md))
 
 - **N+1 queries.** Does listing 100 items issue 101 queries?
 - **Unbounded queries.** `SELECT *` with no `LIMIT`.
@@ -223,7 +223,7 @@ DATA-5e10: listUsers issues one query per row
    - Fix: join or batch the lookup
 ```
 
-### Backend ([backend.md](./skills/ucof/references/domains/backend.md))
+### Backend ([backend.md](./skills/codebase-doctor/references/domains/backend.md))
 
 - **Input validation** on every write path.
 - **Error handling.** Stack traces in responses, silently swallowed errors.
@@ -237,7 +237,7 @@ BE-2b7d: POST /api/messages accepts arbitrary JSON
    - Fix: validate at the handler boundary
 ```
 
-### External services ([external.md](./skills/ucof/references/domains/external.md))
+### External services ([external.md](./skills/codebase-doctor/references/domains/external.md))
 
 - **Retry logic** and backoff on third-party calls.
 - **Timeouts** on outbound requests.
@@ -252,7 +252,7 @@ EXT-90ac: OpenAI calls have no timeout or retry
    - Fix: timeout plus exponential backoff
 ```
 
-### Frontend ([frontend.md](./skills/ucof/references/domains/frontend.md))
+### Frontend ([frontend.md](./skills/codebase-doctor/references/domains/frontend.md))
 
 - **Server vs client components.** Is client-side rendering overused?
 - **Bundle size** growth.
@@ -262,7 +262,7 @@ EXT-90ac: OpenAI calls have no timeout or retry
 - **Data fetching.** Fetching on every render, race conditions.
 - **Accessibility basics.**
 
-### Infrastructure ([infrastructure.md](./skills/ucof/references/domains/infrastructure.md))
+### Infrastructure ([infrastructure.md](./skills/codebase-doctor/references/domains/infrastructure.md))
 
 - **CI/CD** with tests and type checks before deploy.
 - **Error monitoring** in production.
@@ -271,7 +271,7 @@ EXT-90ac: OpenAI calls have no timeout or retry
 - **Environment separation.**
 - **Logging and alerts.**
 
-### Performance ([performance.md](./skills/ucof/references/domains/performance.md))
+### Performance ([performance.md](./skills/codebase-doctor/references/domains/performance.md))
 
 - **Polling intervals** that are too aggressive.
 - **Caching.** Same data fetched repeatedly?
@@ -280,7 +280,7 @@ EXT-90ac: OpenAI calls have no timeout or retry
 - **Memory leaks.** Listeners and timers not cleaned up.
 - **Rendering.** Excess re-rendering.
 
-### Quality ([quality.md](./skills/ucof/references/domains/quality.md))
+### Quality ([quality.md](./skills/codebase-doctor/references/domains/quality.md))
 
 - **Test coverage** of core logic.
 - **Type safety.** `any` everywhere?
@@ -309,7 +309,7 @@ Within a phase, findings are ordered by severity, then by effort, so quick wins 
 
 ## Severity classification
 
-Severity is about impact if the finding is real. Uncertainty goes in `confidence`, never into a softer severity. The anchors below match [finding-contract.md](./skills/ucof/references/finding-contract.md).
+Severity is about impact if the finding is real. Uncertainty goes in `confidence`, never into a softer severity. The anchors below match [finding-contract.md](./skills/codebase-doctor/references/finding-contract.md).
 
 ### Critical
 
@@ -362,7 +362,7 @@ Action: address opportunistically.
 
 ## Finding format
 
-The schema is defined once, in [skills/ucof/references/finding-contract.md](./skills/ucof/references/finding-contract.md). That file also holds the field rules, the severity table, and the list of what is not a finding. In summary:
+The schema is defined once, in [skills/codebase-doctor/references/finding-contract.md](./skills/codebase-doctor/references/finding-contract.md). That file also holds the field rules, the severity table, and the list of what is not a finding. In summary:
 
 - The analyst supplies `domain`, `category` (a kebab-case slug of the defect class), `title`, `severity`, `confidence`, `symbol` (the enclosing function, class, route, or config key), `rationale` (source, sink, and why the path is unguarded), `evidence[]` (file, line range, verbatim snippet; the first item is the primary site), `impact`, and `recommendation` (action, effort, optional code example). `relatedFindings` and `tags` are optional.
 - The pipeline adds `id` and `fileTargets` (renderer) and `verification` (verifier).
@@ -468,17 +468,17 @@ If a domain fails, the report states the coverage (for example "5/8 domains anal
 
 ## From analysis to implementation
 
-`/ucof fix` turns verified findings into reviewable patches. The design constraints are the same as for analysis: nothing happens to your repository without your say-so, and nothing is trusted just because a model said it.
+`/codebase-doctor fix` turns verified findings into reviewable patches. The design constraints are the same as for analysis: nothing happens to your repository without your say-so, and nothing is trusted just because a model said it.
 
 **Candidates.** Findings with a `confirmed` or `downgraded` verdict, or unverified findings with high confidence. Refuted findings are never fixed. The job needs a prior `report.json`.
 
 **One question up front.** The skill asks which findings to fix (the top fixes are preselected), or takes `--ids`. After that it does not ask again until the end.
 
-**Worktree isolation.** Each `ucof-fixer` (Sonnet) runs in its own isolated git worktree. Parallel fixers cannot trample each other, and a failed attempt leaves your working tree untouched. At most four run at once.
+**Worktree isolation.** Each `doctor-fixer` (Sonnet) runs in its own isolated git worktree. Parallel fixers cannot trample each other, and a failed attempt leaves your working tree untouched. At most four run at once.
 
 **Fix at the root cause.** The fixer implements one finding at its mechanism, not just at the reported line. It adds a test, runs the project's test command, and returns a diff plus the result. It does not commit, push, or open pull requests, and it changes nothing the finding does not require.
 
-**Review gate.** Each diff goes to a `ucof-fix-reviewer` (Opus, read-only). It approves only if:
+**Review gate.** Each diff goes to a `doctor-fix-reviewer` (Opus, read-only). It approves only if:
 
 - the mechanism is removed on every path, not just the one the finding cited,
 - the change is targeted,
@@ -489,13 +489,13 @@ On rejection the fixer gets one retry with the reviewer's required changes. A se
 
 **Delivery.** Approved diffs are written to `.optimization/patches/<id>.patch` with a header recording the verdict. A final question offers: apply all, pick some, or none. Applying uses `git apply --3way` and reports success or conflict per patch.
 
-**Never commits or pushes.** The result of applying a patch is an uncommitted change in your working tree, for you to read, test, and commit yourself. A later `/ucof analyze` shows the resolved findings in the trend.
+**Never commits or pushes.** The result of applying a patch is an uncommitted change in your working tree, for you to read, test, and commit yourself. A later `/codebase-doctor analyze` shows the resolved findings in the trend.
 
 ---
 
 ## Validation
 
-How do you know the pipeline finds real issues and does not invent them? UCOF is checked against a planted-issue fixture.
+How do you know the pipeline finds real issues and does not invent them? Codebase Doctor is checked against a planted-issue fixture.
 
 - **Fixture.** `cli-standalone/test/fixtures/planted-project/` is a small e-commerce backend (users, orders, payments, an email worker) with deliberately planted defects across several domains, such as SQL injection, an IDOR, mass assignment, a hardcoded secret, command injection, an unverified webhook, missing idempotency, and a missing timeout.
 - **Answer key.** `cli-standalone/test/fixtures/planted-project.key.json` (kept outside the fixture so analysts cannot read it) lists each planted issue with its domain, file, and the category slugs that count as a hit.
@@ -508,7 +508,7 @@ The automated test suite (`cd cli-standalone && npm test`, 20 tests) covers the 
 
 ---
 
-## What UCOF does not check
+## What Codebase Doctor does not check
 
 - **Code style.** Use ESLint and Prettier, unless style causes a security issue.
 - **Variable naming and whitespace.** Use your team conventions and formatters.
@@ -518,7 +518,7 @@ The automated test suite (`cd cli-standalone && npm test`, 20 tests) covers the 
 
 ---
 
-## When to use UCOF
+## When to use Codebase Doctor
 
 Good times:
 
@@ -540,15 +540,15 @@ Not ideal:
 
 ## Iterative improvement
 
-UCOF works best as a cycle:
+Codebase Doctor works best as a cycle:
 
 ```
-1. Run /ucof            -> find issues
+1. Run /codebase-doctor            -> find issues
 2. Fix Phase 0          -> critical and quick
 3. Fix Phase 1          -> high severity
-4. Run /ucof again      -> score improves; trend shows resolved findings
+4. Run /codebase-doctor again      -> score improves; trend shows resolved findings
 5. Fix Phase 2          -> medium
-6. Run /ucof again
+6. Run /codebase-doctor again
 7. Fix Phase 3          -> ongoing
 ```
 
@@ -562,11 +562,11 @@ A repository with 1 critical, 2 high, and 10 medium findings scores 100 - 20 - 2
 
 ## Output artifacts
 
-UCOF writes these to `.optimization/`:
+Codebase Doctor writes these to `.optimization/`:
 
 | File | Purpose |
 |------|---------|
-| `report.json` | Canonical source of truth: findings, `refutedFindings`, `verification` tally, scores, patterns, plan, trend, metadata (`metadata.version` is 3.0.0) |
+| `report.json` | Canonical source of truth: findings, `refutedFindings`, `verification` tally, scores, patterns, plan, trend, metadata (`metadata.version` is 4.0.0) |
 | `report.md` | Human-readable dashboard and grouped findings |
 | `report.html` | Self-contained HTML, dark engineering-blueprint theme, no external dependencies |
 | `execution-plan.md` | Prioritized remediation plan |
@@ -583,5 +583,5 @@ UCOF writes these to `.optimization/`:
 - [Main README](./README.md): install and quick start
 - [VERSIONS.md](./VERSIONS.md): plugin vs CLI
 - [CLI README](./cli-standalone/README.md): CLI installation, config, CI
-- [Finding contract](./skills/ucof/references/finding-contract.md)
+- [Finding contract](./skills/codebase-doctor/references/finding-contract.md)
 - [CHANGELOG.md](./CHANGELOG.md)

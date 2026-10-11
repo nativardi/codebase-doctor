@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Scores a UCOF report.json against a planted-issue answer key.
+// Scores a Codebase Doctor report.json against a planted-issue answer key.
 // Usage: node scripts/score-eval.js <report.json> <key.json>
 // Prints precision/recall/F1 over planted issues, decoys tripped, and the misses.
 const fs = require('fs');

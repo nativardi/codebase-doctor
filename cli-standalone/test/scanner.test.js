@@ -7,7 +7,7 @@ const test = require('node:test');
 const { scanProject } = require('../lib/scanner');
 
 function createTempProject() {
-  return fs.mkdtempSync(path.join(os.tmpdir(), 'ucof-scanner-'));
+  return fs.mkdtempSync(path.join(os.tmpdir(), 'codebase-doctor-scanner-'));
 }
 
 test('scanner respects .gitignore entries', () => {

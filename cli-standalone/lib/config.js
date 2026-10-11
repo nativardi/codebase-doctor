@@ -16,7 +16,7 @@ const DEFAULT_CONFIG = {
   outputDir: '.optimization',
   fileSizeLimitBytes: 102400,
   concurrency: 3,
-  frameworkPath: process.env.UCOF_PATH || path.join(__dirname, '..', '..'),
+  frameworkPath: process.env.DOCTOR_PATH || path.join(__dirname, '..', '..'),
   includeGlobs: [],
   excludeGlobs: [],
   outputFormats: ['json', 'md', 'execution-plan'],
@@ -102,7 +102,7 @@ function createConfig(overrides = {}) {
 function loadConfigFile(projectPath, explicitConfigPath) {
   const configPath = explicitConfigPath
     ? path.resolve(explicitConfigPath)
-    : path.join(projectPath, '.ucof.config.json');
+    : path.join(projectPath, '.codebase-doctor.config.json');
 
   if (!fs.existsSync(configPath)) {
     return { configPath, fileConfig: {} };
@@ -114,7 +114,7 @@ function loadConfigFile(projectPath, explicitConfigPath) {
       fileConfig: JSON.parse(fs.readFileSync(configPath, 'utf8')),
     };
   } catch (error) {
-    throw new Error(`Invalid UCOF config at ${configPath}: ${error.message}`);
+    throw new Error(`Invalid Codebase Doctor config at ${configPath}: ${error.message}`);
   }
 }
 

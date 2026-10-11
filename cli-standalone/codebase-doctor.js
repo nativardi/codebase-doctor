@@ -43,12 +43,12 @@ async function main() {
       case 'help':
       default:
         console.log(`
-Universal Codebase Optimization Framework (UCOF)
+Codebase Doctor
 
 Usage:
-  ucof analyze <project-path>    Run full analysis
-  ucof fix <project-path>        Start fix session (new context)
-  ucof report <project-path>     View existing report
+  codebase-doctor analyze <project-path>    Run full analysis
+  codebase-doctor fix <project-path>        Start fix session (new context)
+  codebase-doctor report <project-path>     View existing report
 
 Options:
   --skip-discovery    Use cached discovery data
@@ -58,11 +58,11 @@ Options:
   --ci                Print canonical JSON to stdout and use CI exit codes
 
 Examples:
-  ucof analyze /path/to/my/project
-  ucof fix /path/to/my/project
-  ucof analyze . --skip-discovery
-  ucof analyze . --concurrency 2 --force
-  ucof analyze . --ci --config .ucof.config.json
+  codebase-doctor analyze /path/to/my/project
+  codebase-doctor fix /path/to/my/project
+  codebase-doctor analyze . --skip-discovery
+  codebase-doctor analyze . --concurrency 2 --force
+  codebase-doctor analyze . --ci --config .codebase-doctor.config.json
 `);
     }
   } catch (error) {

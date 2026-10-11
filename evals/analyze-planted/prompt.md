@@ -1,1 +1,1 @@
-/ucof analyze .
+/codebase-doctor analyze .

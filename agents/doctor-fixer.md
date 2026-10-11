@@ -1,6 +1,6 @@
 ---
-name: ucof-fixer
-description: Implements one verified UCOF finding (or one cleanup slice or refactor workstream) in an isolated git worktree and runs the project's tests. Dispatched by the UCOF skill's fix, cleanup, and refactor jobs only; never commits or pushes. Not for direct use.
+name: doctor-fixer
+description: Implements one verified Codebase Doctor finding (or one cleanup slice or refactor workstream) in an isolated git worktree and runs the project's tests. Dispatched by the Codebase Doctor skill's fix, cleanup, and refactor jobs only; never commits or pushes. Not for direct use.
 model: sonnet
 color: green
 tools: Read, Edit, Write, Glob, Grep, Bash

@@ -1,15 +1,15 @@
 {
-  "name": "ucof",
-  "version": "3.0.0",
-  "description": "Universal Codebase Optimization Framework - CLI Orchestrator",
-  "main": "ucof.js",
+  "name": "codebase-doctor",
+  "version": "4.0.0",
+  "description": "Codebase Doctor - CLI Orchestrator",
+  "main": "codebase-doctor.js",
   "bin": {
-    "ucof": "./ucof.js"
+    "codebase-doctor": "./codebase-doctor.js"
   },
   "scripts": {
-    "start": "node ucof.js",
-    "analyze": "node ucof.js analyze",
-    "fix": "node ucof.js fix",
+    "start": "node codebase-doctor.js",
+    "analyze": "node codebase-doctor.js analyze",
+    "fix": "node codebase-doctor.js fix",
     "test": "node --test test/*.test.js"
   },
   "keywords": [
@@ -31,6 +31,6 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/nativardi/ucof.git"
+    "url": "https://github.com/nativardi/codebase-doctor.git"
   }
 }

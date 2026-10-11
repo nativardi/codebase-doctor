@@ -311,7 +311,7 @@ function buildCanonicalReport(runContext) {
 
   const report = {
     metadata: {
-      version: '3.0.0',
+      version: '4.0.0',
       generatedAt: new Date().toISOString(),
       projectPath: runContext.projectPath,
       projectName: runContext.discoveryData.project_name,
@@ -380,7 +380,7 @@ function generateMarkdownFromReport(report) {
     ? ` (${report.metadata.coverage.completed}/${report.metadata.coverage.total} domains analyzed)`
     : '';
 
-  return `# UCOF Report
+  return `# Codebase Doctor Report
 
 ## Summary Dashboard
 - **Project**: ${report.metadata.projectName}
@@ -507,7 +507,7 @@ function generateHtmlFromReport(report) {
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>UCOF · ${safeProjectName}</title>
+  <title>Codebase Doctor · ${safeProjectName}</title>
   <style>
     :root {
       --bg: #0b0b0d;
@@ -1323,7 +1323,7 @@ function generateHtmlFromReport(report) {
 <body>
   <main>
     <div class="ribbon">
-      <div class="brand"><span class="brand-mark"></span>UCOF · Universal Codebase Optimization Framework</div>
+      <div class="brand"><span class="brand-mark"></span>Codebase Doctor</div>
       <div class="meta">
         <span>Version<em id="r-version"></em></span>
         <span>Generated<em id="r-generated"></em></span>
@@ -1420,7 +1420,7 @@ function generateHtmlFromReport(report) {
     </section>
 
     <footer>
-      <span>UCOF v2.1 · Generated Report</span>
+      <span>Codebase Doctor v2.1 · Generated Report</span>
       <span id="f-coverage"></span>
     </footer>
   </main>

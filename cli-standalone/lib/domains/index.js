@@ -63,7 +63,7 @@ const DOMAIN_REGISTRY = {
 };
 
 function readSkill(skillName, frameworkPath) {
-  const lensPath = path.join(frameworkPath, 'skills', 'ucof', 'references', 'domains', `${skillName}.md`);
+  const lensPath = path.join(frameworkPath, 'skills', 'codebase-doctor', 'references', 'domains', `${skillName}.md`);
   if (fs.existsSync(lensPath)) {
     return fs.readFileSync(lensPath, 'utf8');
   }
@@ -72,7 +72,7 @@ function readSkill(skillName, frameworkPath) {
 }
 
 function readFindingContract(frameworkPath) {
-  return fs.readFileSync(path.join(frameworkPath, 'skills', 'ucof', 'references', 'finding-contract.md'), 'utf8');
+  return fs.readFileSync(path.join(frameworkPath, 'skills', 'codebase-doctor', 'references', 'finding-contract.md'), 'utf8');
 }
 
 function selectDiscoveryFiles(scanResult, config) {
