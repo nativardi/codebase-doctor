@@ -6,8 +6,9 @@ Instructions for AI assistants working on this repository. The repository root i
 
 ## 1. Layout (what lives where)
 
-- `skills/ucof/SKILL.md` — the `/ucof` front desk (analyze, fix). Keep it under 300 lines; detail goes in `references/`.
+- `skills/ucof/SKILL.md` — the `/ucof` front desk (analyze, fix, cleanup, refactor). Keep it under 300 lines; detail goes in `references/`.
 - `skills/ucof/references/domains/*.md` — the eight domain lenses. Single source of truth for what each analyst hunts; the CLI reads the same files.
+- `skills/ucof/references/cleanup.md`, `refactor.md` — the cleanup and refactor job procedures (briefs, builder rules, review prompts).
 - `skills/ucof/references/finding-contract.md` — the finding schema, severity table, scoring rule. Single source of truth; never restate it elsewhere, link to it.
 - `agents/*.md` — scout, analyst, verifier, fixer, fix-reviewer. Every agent sets an explicit `model:`.
 - `scripts/render-report.js` — deterministic rendering (ids, dedupe, score, plan, HTML) built on `cli-standalone/lib/reporter.js`. Scoring and planning live in code, never in prompts.

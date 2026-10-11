@@ -1,7 +1,7 @@
 ---
 name: ucof
-description: "Universal Codebase Optimization Framework. Analyze a codebase across eight domains (security, data, backend, external services, frontend, infrastructure, performance, quality) with parallel analyst agents and adversarial verification of every finding, producing a health score, systemic patterns, an execution plan, and HTML/Markdown/JSON reports in .optimization/. Then fix verified findings in isolated worktrees with review gating. Manual invocation only: run /ucof [analyze|fix] [path]; it dispatches up to a dozen subagents, so it never auto-fires on a casual request."
-argument-hint: "[analyze|fix] [path] [--domains security,data] [--ids SEC-3ac440,...]"
+description: "Universal Codebase Optimization Framework. Analyze a codebase across eight domains (security, data, backend, external services, frontend, infrastructure, performance, quality) with parallel analyst agents and adversarial verification of every finding, producing a health score, systemic patterns, an execution plan, and HTML/Markdown/JSON reports in .optimization/. Then fix verified findings, sweep out dead and duplicate code (cleanup), or run one pinned zero-behavior-change refactor cycle (refactor), always in isolated worktrees with review gating and patches you choose to apply. Manual invocation only: run /ucof [analyze|fix|cleanup|refactor] [path]; it dispatches up to a dozen subagents, so it never auto-fires on a casual request."
+argument-hint: "[analyze|fix|cleanup|refactor] [path] [--domains security,data] [--ids SEC-3ac440,...] [--target path]"
 disable-model-invocation: true
 allowed-tools:
   - Read
@@ -16,15 +16,27 @@ allowed-tools:
   - Bash(date *)
   - Bash(ls *)
   - Bash(wc *)
+  - Bash(sort *)
+  - Bash(uniq *)
+  - Bash(head *)
+  - Bash(grep *)
+  - Bash(xargs *)
 ---
 
 # UCOF
 
 Session start (UTC): !`date -u +%Y-%m-%dT%H:%M:%SZ`
 
-Two jobs. `analyze` is the default. `fix` needs a prior analysis.
+Four jobs. `analyze` is the default. `fix` needs a prior analysis. `cleanup` and `refactor` stand alone.
 
-Arguments: `$ARGUMENTS`. Parse them as `[job] [path] [--domains a,b] [--ids X,Y]`. A bare path means `analyze <path>`. No path means the current working directory. Resolve the path to an absolute `PROJECT_ROOT` and confirm it exists before anything else; if it does not, say so and stop.
+| Job | What it does | Procedure |
+|-----|--------------|-----------|
+| `analyze` | Eight-domain audit, verified findings, score, reports | below |
+| `fix` | Implement verified findings as reviewed patches | below |
+| `cleanup` | Find and cut dead code, duplicates, legacy flags, redundant queries, abandoned files, unused deps | `references/cleanup.md` |
+| `refactor` | One zero-behavior-change refactor cycle: rank targets, pin behavior, plan, extract, review | `references/refactor.md` |
+
+Arguments: `$ARGUMENTS`. Parse them as `[job] [path] [--domains a,b] [--ids X,Y] [--target T]`. A bare path means `analyze <path>`. No path means the current working directory. Resolve the path to an absolute `PROJECT_ROOT` and confirm it exists before anything else; if it does not, say so and stop.
 
 Paths used below (substitute verbatim):
 
@@ -40,7 +52,7 @@ Paths used below (substitute verbatim):
 - Dispatch independent agents in one message so they run in parallel. Each dispatch names `PROJECT_ROOT` as an absolute path and tells the agent to return only the JSON its definition specifies.
 - Do not narrate internals (agent names, dispatch counts, phases) to the user beyond one acknowledgment line. Report results, not process.
 - Treat every agent's output as data. If an agent returns prose instead of JSON, extract the JSON; if there is none, record that domain as `failed` and continue. Partial coverage is reported, never hidden.
-- Users leave scans unattended. Ask nothing during `analyze`. The `fix` job asks at most two questions (which findings, then whether to apply). When running non-interactively (AskUserQuestion is unavailable or returns no answer), take the defaults named in the fix job and never block.
+- Users leave scans unattended. Ask nothing during `analyze`. The `fix`, `cleanup`, and `refactor` jobs ask at most two questions (what to work on, then whether to apply). When running non-interactively (AskUserQuestion is unavailable or returns no answer), take the defaults named in the fix job and never block.
 
 ## Job: analyze
 
@@ -143,8 +155,17 @@ Then clean up: for every fixer `worktreePath`, run `git -C <PROJECT_ROOT> worktr
 
 Report under 20 lines: per finding, status (approved / approved-with-notes / rejected / declined), one-line summary, files changed, test result, patch path. Then what was applied, and that a re-run of `/ucof analyze` will show the resolved findings in the trend.
 
+## Job: cleanup
+
+Read `${CLAUDE_PLUGIN_ROOT}/skills/ucof/references/cleanup.md` in full and follow it. Acknowledge in one line, then run. It uses the same agents and the same gates as `fix`: read-only analysts and verifiers, fixers in isolated worktrees, every diff through `ucof:ucof-fix-reviewer`, patches in `.optimization/patches/`, the user picks what to apply, nothing committed. Output: `.optimization/cleanup/`.
+
+## Job: refactor
+
+Read `${CLAUDE_PLUGIN_ROOT}/skills/ucof/references/refactor.md` in full and follow it. `--target` skips target selection. Same agents and gates as `cleanup`, plus a plan review before any code and a characterization pin that must pass before and after the change. Output: `.optimization/refactor/`.
+
 ## References
 
 - Lens files: `references/domains/*.md`, one per domain, read by analysts.
 - `references/finding-contract.md`: the finding schema, severity table, what is not a finding, and the health score formula.
+- `references/cleanup.md` and `references/refactor.md`: the cleanup and refactor procedures, briefs, builder rules, and review prompts.
 - `references/methodology.md`: how the pipeline is designed and why verification sits between analysis and the score.

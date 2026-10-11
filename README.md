@@ -4,7 +4,7 @@
 [![Claude Code](https://img.shields.io/badge/Claude%20Code-plugin-blueviolet.svg)](https://claude.ai)
 [![Node.js](https://img.shields.io/badge/Node.js%20CLI-18+-green.svg)](https://nodejs.org/)
 
-UCOF is a Claude Code plugin that audits a codebase across eight domains (security, external services, data, backend, frontend, infrastructure, performance, quality). Specialist analyst agents trace data flows through the code, an adversarial verifier tries to refute every finding before it reaches the score, and a deterministic script turns the survivors into a health score, an execution plan, and HTML, Markdown, and JSON reports. A second job, `/ucof fix`, implements verified findings in isolated git worktrees, has each diff reviewed, and hands you patches to apply. UCOF never commits or pushes, and analysis never writes outside `.optimization/`.
+UCOF is a Claude Code plugin that audits a codebase across eight domains (security, external services, data, backend, frontend, infrastructure, performance, quality). Specialist analyst agents trace data flows through the code, an adversarial verifier tries to refute every finding before it reaches the score, and a deterministic script turns the survivors into a health score, an execution plan, and HTML, Markdown, and JSON reports. A second job, `/ucof fix`, implements verified findings in isolated git worktrees, has each diff reviewed, and hands you patches to apply. `/ucof cleanup` sweeps out dead code, duplicates, legacy flags, and unused dependencies, and `/ucof refactor` runs one pinned, zero-behavior-change refactor cycle, both through the same worktree, review, and patch gates. UCOF never commits or pushes, and analysis never writes outside `.optimization/`.
 
 A standalone Node CLI (`cli-standalone/`) remains available as a headless alternative that calls the Anthropic API directly, for environments without Claude Code. See [Plugin vs CLI](./VERSIONS.md).
 
@@ -41,7 +41,7 @@ Open Claude Code in the repository you want to audit and run:
 `/ucof` is the same as `/ucof analyze .`. The full argument form is:
 
 ```
-/ucof [analyze|fix] [path] [--domains security,data] [--ids SEC-3ac440,...]
+/ucof [analyze|fix|cleanup|refactor] [path] [--domains security,data] [--ids SEC-3ac440,...] [--target path]
 ```
 
 The skill is user-invoked only (`disable-model-invocation: true`), so Claude never starts a scan on its own.
@@ -155,6 +155,25 @@ The read-only stance is preserved: analysis writes only to `.optimization/`; fix
 
 ---
 
+## The cleanup job
+
+```
+/ucof cleanup
+```
+
+A whole-repository sweep for code that can go. Seven read-only analysts hunt dead code, duplicate logic, finished flags and migration shims, redundant queries, abandoned files, YAGNI complexity, and unused dependencies; each item carries a zero-caller proof and a reachability check (dynamic imports, file-system routes, job registrations, deploy config, operator docs). A verifier tries to refute each one. You pick which slices (disjoint file sets) to apply; one fixer per slice re-verifies every claim and cuts in its own worktree with zero behavior change; the fix-reviewer gates every diff. Patches land in `.optimization/patches/cleanup-<slice>.patch`, the full report in `.optimization/cleanup/report.md`. Feature deletions still reachable from the UI, copy or response-shape changes, migrations, and anything the project marks protected or kill-switched are reported, never cut. Procedure: [`skills/ucof/references/cleanup.md`](skills/ucof/references/cleanup.md).
+
+## The refactor job
+
+```
+/ucof refactor
+/ucof refactor --target src/billing/invoice.ts
+```
+
+One zero-behavior-change cycle. A size and churn sweep plus three read-only assessments rank candidate targets (duplicate helpers, logic in the wrong layer, oversized files). The plan is reviewed against the code before anything is written. Then a fixer writes a characterization test, runs it green against the current code, moves code verbatim with re-exports so no call site changes, and reruns the pin with identical counts. The fix-reviewer checks behavioral parity (null handling, error class, ordering of awaits and state updates, partial mocks). You get `.optimization/patches/refactor-<X>.patch` (pin included) and a cycle note with ranked deferred targets for next time. Procedure: [`skills/ucof/references/refactor.md`](skills/ucof/references/refactor.md).
+
+---
+
 ## Output files
 
 Everything lands in `<project>/.optimization/`:
@@ -190,13 +209,15 @@ node ucof.js analyze /path/to/your/project
 ```
 ucof/
 ├── .claude-plugin/
-│   ├── plugin.json              # Plugin manifest (name: ucof, version 3.0.0)
+│   ├── plugin.json              # Plugin manifest (name: ucof, version 3.1.0)
 │   └── marketplace.json         # Makes the repo its own single-plugin marketplace
 ├── skills/ucof/
-│   ├── SKILL.md                 # The /ucof skill (analyze and fix jobs)
+│   ├── SKILL.md                 # The /ucof skill (analyze, fix, cleanup, refactor)
 │   └── references/
 │       ├── finding-contract.md  # Single finding schema
 │       ├── methodology.md       # Condensed methodology the skill reads
+│       ├── cleanup.md           # Cleanup job procedure, briefs, builder rules
+│       ├── refactor.md          # Refactor job procedure, briefs, builder rules
 │       └── domains/             # Eight lens files, shared with the CLI
 ├── agents/
 │   ├── ucof-scout.md            # Haiku, read-only discovery

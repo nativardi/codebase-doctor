@@ -33,6 +33,8 @@ If you can run Claude Code headlessly in CI, prefer that over the CLI: the findi
 | Verification (adversarial verifier, default refuted) | Yes | No. Findings are unverified |
 | Refuted findings kept under `refutedFindings` | Yes | Not applicable |
 | Fix job (worktrees, review gate, patches) | Yes (`/ucof fix`) | No. `ucof fix` prints top fixes and writes `pr-descriptions.md` |
+| Cleanup job (dead code, duplicates, deps; worktrees, review gate, patches) | Yes (`/ucof cleanup`) | No |
+| Refactor job (pinned zero-behavior-change cycle) | Yes (`/ucof refactor`) | No |
 | Stable finding ids | Yes | Yes |
 | Health score and execution plan | Yes (shared reporter code) | Yes |
 | Trend vs previous run | Yes | Yes |

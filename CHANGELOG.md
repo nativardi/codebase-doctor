@@ -1,6 +1,15 @@
 # UCOF Changelog
 
-## v3.0.0 - Claude Code Plugin (Current)
+## v3.1.0 - Cleanup and refactor jobs (Current)
+
+Two new jobs on the `/ucof` front desk, both generic for any repository and both under the same gated-write model as `fix`.
+
+- **`/ucof cleanup [path]`** (`skills/ucof/references/cleanup.md`). Seven read-only analysts (dead code, duplicate logic, legacy flags and shims, redundant queries, abandoned files, YAGNI complexity, dependencies) with a reachability checklist and a zero-caller proof per item; findings use the finding contract (`domain: quality`); one verifier pass per brief; candidates grouped into slices with disjoint files; one `ucof-fixer` per slice in its own worktree under cleanup builder rules (re-verify every claim, zero behavior change, merge only identical contracts); every diff reviewed by `ucof-fix-reviewer` with a cleanup hunt list; patches to `.optimization/patches/cleanup-<slice>.patch`; report at `.optimization/cleanup/report.md`. Complexity findings are report-only.
+- **`/ucof refactor [path] [--target T]`** (`skills/ucof/references/refactor.md`). One zero-behavior-change cycle: size and churn sweep, three read-only assessments, ranked target, a plan reviewed by `ucof-fix-reviewer` before any code, a characterization pin written and green against the current code before extraction, verbatim moves with re-exports, a diff review focused on behavioral parity, patches to `.optimization/patches/refactor-<X>.patch`, and a cycle note with ranked deferred targets.
+- Both discover the project's commands, layering, and protected paths from its own `CLAUDE.md` / `AGENTS.md` / package scripts. No new agents: `ucof-fixer` and `ucof-fix-reviewer` gained a short "modes" clause that defers to the named reference file. Analysis-side agents and lenses are unchanged, so the v3.0.0 eval numbers stand.
+- UCOF still never commits, pushes, or opens pull requests.
+
+## v3.0.0 - Claude Code Plugin
 
 UCOF is now a Claude Code plugin whose root is the repository root. The paste-this-URL skill is replaced by a real `/ucof` skill with specialist agents, adversarial verification, and a review-gated fix job. The CLI remains as a headless API alternative.
 

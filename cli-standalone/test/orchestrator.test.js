@@ -359,8 +359,17 @@ test('plugin layout: every domain has a lens, agents referenced by the skill exi
     assert.match(frontmatter, /^model: (haiku|sonnet|opus)$/m, `${agent} must set an explicit model`);
   }
 
+  for (const mode of ['cleanup', 'refactor']) {
+    assert.ok(fs.existsSync(path.join(root, 'skills', 'ucof', 'references', `${mode}.md`)), `mode reference missing: ${mode}`);
+    assert.ok(skill.includes(`references/${mode}.md`), `SKILL.md does not route ${mode}`);
+  }
+  assert.ok(skill.split('\n').length < 300, 'SKILL.md must stay under 300 lines');
+
   const manifest = JSON.parse(fs.readFileSync(path.join(root, '.claude-plugin', 'plugin.json'), 'utf8'));
   assert.equal(manifest.name, 'ucof');
+  const marketplace = JSON.parse(fs.readFileSync(path.join(root, '.claude-plugin', 'marketplace.json'), 'utf8'));
+  assert.equal(marketplace.plugins[0].version, manifest.version);
+  assert.equal(marketplace.metadata.version, manifest.version);
   // No stray skills: only skills/ucof may contain a SKILL.md, or the plugin would expose eight extra skills.
   const skillDirs = fs.readdirSync(path.join(root, 'skills')).filter((entry) => fs.existsSync(path.join(root, 'skills', entry, 'SKILL.md')));
   assert.deepEqual(skillDirs, ['ucof']);
