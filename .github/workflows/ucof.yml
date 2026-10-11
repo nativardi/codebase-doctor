@@ -1,0 +1,82 @@
+# Runs UCOF against this repository on demand or on pull requests.
+#
+# Two paths. The plugin path (default) runs the full pipeline, including the verifier pass,
+# through headless Claude Code. The CLI path calls the Anthropic API directly and produces
+# unverified findings; use it where Claude Code cannot be installed.
+#
+# Both need ANTHROPIC_API_KEY in repository secrets.
+
+name: UCOF
+
+on:
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      engine:
+        description: plugin (headless Claude Code) or cli (direct API)
+        default: plugin
+        type: choice
+        options: [plugin, cli]
+
+jobs:
+  ucof:
+    runs-on: ubuntu-latest
+    env:
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      ENGINE: ${{ github.event.inputs.engine || 'plugin' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Fetch UCOF
+        run: git clone --depth 1 https://github.com/nativardi/ucof.git "$RUNNER_TEMP/ucof"
+
+      - name: Analyze with the plugin (headless Claude Code)
+        if: env.ENGINE == 'plugin'
+        run: |
+          npm install -g @anthropic-ai/claude-code
+          claude -p --plugin-dir "$RUNNER_TEMP/ucof" --permission-mode bypassPermissions \
+            "/ucof analyze $GITHUB_WORKSPACE" > ucof-summary.txt
+          cat ucof-summary.txt
+
+      - name: Analyze with the CLI (direct API)
+        if: env.ENGINE == 'cli'
+        run: |
+          npm --prefix "$RUNNER_TEMP/ucof/cli-standalone" install
+          node "$RUNNER_TEMP/ucof/cli-standalone/ucof.js" analyze "$GITHUB_WORKSPACE" --ci > /dev/null || true
+
+      - name: Upload report
+        uses: actions/upload-artifact@v4
+        with:
+          name: ucof-report
+          path: |
+            .optimization/report.json
+            .optimization/report.md
+            .optimization/report.html
+            .optimization/execution-plan.md
+
+      - name: Comment on the pull request
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const report = JSON.parse(fs.readFileSync('.optimization/report.json', 'utf8'));
+            const v = report.verification || {};
+            const body = [
+              '## UCOF',
+              '',
+              `Health score: **${report.scores.overall}/100**` + (report.trend?.scoreChange ? ` (${report.trend.scoreChange > 0 ? '+' : ''}${report.trend.scoreChange})` : ''),
+              `Critical ${report.severityCounts.critical} · High ${report.severityCounts.high} · Medium ${report.severityCounts.medium} · Low ${report.severityCounts.low}`,
+              v.verified !== undefined ? `Verified ${v.verified} · Refuted ${v.refuted} · Unverified ${v.unverified}` : 'Findings unverified (CLI engine)',
+              '',
+              ...(report.topFixes || []).map((fix) => `- **${fix.id}** ${fix.title} (${fix.effort})`),
+            ].join('\n');
+            await github.rest.issues.createComment({ owner: context.repo.owner, repo: context.repo.repo, issue_number: context.issue.number, body });
+
+      - name: Fail on critical findings
+        run: |
+          node -e "const r=require('./.optimization/report.json'); if ((r.severityCounts.critical||0) > 0) { console.error('critical findings present'); process.exit(1); }"

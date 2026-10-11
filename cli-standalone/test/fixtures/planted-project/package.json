@@ -1,0 +1,7 @@
+{
+  "name": "shoply-api",
+  "version": "0.4.2",
+  "private": true,
+  "scripts": { "start": "node src/server.js", "test": "node --test tests/" },
+  "dependencies": { "express": "^4.19.2", "pg": "^8.11.3", "stripe": "^14.0.0", "jsonwebtoken": "^9.0.2", "bullmq": "^5.1.0" }
+}

@@ -1,428 +1,436 @@
-# UCOF CLI - Standalone Installation
+# UCOF CLI - Headless API Alternative
 
-> **Powerful, cost-optimized analysis. Perfect for automation and teams.**
+> **Plugin or CLI?** The primary UCOF product is the Claude Code plugin at the repository root: it verifies every finding with an adversarial verifier and includes a review-gated fix job. This CLI is the **headless API alternative** for environments without Claude Code. It calls the Anthropic API directly. **CLI findings are unverified**, and `ucof fix` here only prints the top fixes and writes `pr-descriptions.md`. If you can run Claude Code in your pipeline, prefer the plugin, headlessly: `claude -p --plugin-dir /path/to/ucof "/ucof analyze ."`. See the [main README](../README.md) and [Plugin vs CLI](../VERSIONS.md).
+
+The CLI shares the domain lenses (`skills/ucof/references/domains/`), the finding contract, and the reporter with the plugin, so ids, scores, and report formats have the same shape.
 
 ---
 
-## ⚡ Quick Start (3 Steps, 3 Minutes)
+## Installation
 
-### Step 1️⃣ Clone & Install
+### Prerequisites
+
+| Requirement | Version | Get It |
+|-------------|---------|--------|
+| Node.js | 18+ | [nodejs.org](https://nodejs.org/) |
+| npm | 8+ | Comes with Node.js |
+| Anthropic API key | n/a | [console.anthropic.com](https://console.anthropic.com/account/keys) |
+
+### Step 1: Clone and install
 
 ```bash
-# Copy this entire block and run it:
-git clone https://github.com/nativardi/ucof.git ~/ucof-cli && \
-cd ~/ucof-cli/cli-standalone && \
+git clone https://github.com/nativardi/ucof.git ~/ucof
+cd ~/ucof/cli-standalone
 npm install
-
-echo "✅ Installation complete!"
 ```
 
-**What it does:**
-- Downloads UCOF to your home directory
-- Installs Node.js dependencies
-- Ready to use
+The CLI loads its lens files from `skills/ucof/references/domains/` in the same repository, so keep the CLI inside a full clone rather than copying `cli-standalone/` alone. Set `UCOF_PATH` to the repository root if you move it.
 
----
+### Step 2: Get an API key
 
-### Step 2️⃣ Get Your Free API Key
+Create a key at https://console.anthropic.com/account/keys. The CLI uses the API key directly and bills tokens against it; cost depends on repository size and the model mix you configure.
 
-Visit: **https://console.anthropic.com/account/keys**
-
-(You get $5 free credits - enough for ~10 analyses)
-
----
-
-### Step 3️⃣ Set Your API Key
+### Step 3: Set the key
 
 ```bash
-# Choose ONE:
-
-# Option A: Temporary (current terminal session only)
+# Temporary (current terminal session only)
 export ANTHROPIC_API_KEY="sk-ant-your-key-here"
 
-# Option B: Permanent (add to ~/.zshrc or ~/.bashrc)
+# Permanent (add to ~/.zshrc or ~/.bashrc)
 echo 'export ANTHROPIC_API_KEY="sk-ant-your-key-here"' >> ~/.zshrc
 source ~/.zshrc
 ```
 
-**Verify it worked:**
+Verify:
+
 ```bash
-echo $ANTHROPIC_API_KEY
-# Should show: sk-ant-...
+echo $ANTHROPIC_API_KEY   # should start with sk-ant-
 ```
 
----
+### Step 4: Make the command convenient (optional)
 
-## 🚀 Analyze Your Project
+Alias:
 
 ```bash
-# From anywhere on your system:
-~/ucof-cli/cli-standalone/ucof.js analyze /path/to/your/project
+alias ucof='~/ucof/cli-standalone/ucof.js'
 ```
 
-**Example:**
-```bash
-~/ucof-cli/cli-standalone/ucof.js analyze ~/my-app
-# Output: my-app/.optimization/report.md
-```
-
----
-
-## 📊 Check Your Results
+Or link it globally:
 
 ```bash
-# View the report
-cat ~/my-app/.optimization/report.md
-
-# View full JSON findings
-cat ~/my-app/.optimization/synthesis.json
-```
-
----
-
-## 🛠️ Make It Easier (Optional Setup)
-
-### Create an Alias
-
-Add this to your shell config (`~/.zshrc` or `~/.bashrc`):
-
-```bash
-alias ucof='~/ucof-cli/cli-standalone/ucof.js'
-```
-
-Then reload:
-```bash
-source ~/.zshrc
-```
-
-Now you can just say:
-```bash
-ucof analyze /path/to/my/project
-```
-
----
-
-### Global Command (If You Want)
-
-```bash
-cd ~/ucof-cli/cli-standalone
+cd ~/ucof/cli-standalone
 npm link
-
-# Now you can use 'ucof' from anywhere:
-ucof analyze /path/to/project
-```
-
-To uninstall: `npm unlink -g ucof`
-
----
-
-## 📋 CLI Commands
-
-```bash
-# Full analysis (creates .optimization/ folder)
-ucof analyze /path/to/project
-
-# View existing report
-ucof report /path/to/project
-
-# Start fixing issues in new session
-ucof fix /path/to/project
-
-# Re-analyze with cached discovery (faster)
-ucof analyze /path/to/project --skip-discovery
-
-# Show help
 ucof --help
 ```
 
+To remove the link: `npm unlink -g ucof`. To uninstall entirely, unlink and delete the clone.
+
+You should see:
+
+```
+Universal Codebase Optimization Framework (UCOF)
+
+Usage:
+  ucof analyze <project-path>    Run full analysis
+  ucof fix <project-path>        Start fix session (new context)
+  ucof report <project-path>     View existing report
+```
+
 ---
 
-## 💾 Output Files
+## Analyze a project
 
-After `ucof analyze`, your project gets a `.optimization/` folder:
+```bash
+ucof analyze /path/to/your/project
+```
+
+Without the alias: `node ~/ucof/cli-standalone/ucof.js analyze /path/to/your/project`. Results are written to `/path/to/your/project/.optimization/`.
+
+```bash
+cat ~/my-app/.optimization/report.md           # Markdown report
+open ~/my-app/.optimization/report.html        # HTML report
+cat ~/my-app/.optimization/execution-plan.md   # Fix plan
+cat ~/my-app/.optimization/report.json         # Canonical JSON
+```
+
+---
+
+## Commands and flags
+
+```bash
+# Full analysis (creates .optimization/)
+ucof analyze /path/to/project
+
+# View an existing report
+ucof report /path/to/project
+
+# Print the top fixes and write pr-descriptions.md (does not edit code)
+ucof fix /path/to/project
+
+# Re-analyze with cached discovery
+ucof analyze /path/to/project --skip-discovery
+
+# Flags
+ucof analyze /path/to/project --ci               # CI mode: JSON stdout, exit codes
+ucof analyze /path/to/project --force            # Bypass cache, force fresh analysis
+ucof analyze /path/to/project --concurrency 5    # Parallel domain limit (default: 3)
+ucof analyze /path/to/project --config ./my.json # Custom config file
+
+# Help
+ucof --help
+```
+
+| Command | What it does |
+|---------|--------------|
+| `ucof analyze <path>` | Run full analysis, save to `.optimization/` |
+| `ucof report <path>` | Display the existing report |
+| `ucof fix <path>` | Print top fixes, write `pr-descriptions.md`. Does not implement fixes; use the plugin's `/ucof fix` for that |
+| `ucof analyze <path> --skip-discovery` | Re-run with cached tech detection |
+
+---
+
+## Output files
+
+After `ucof analyze`, the project has a `.optimization/` folder:
 
 ```
 your-project/
 └── .optimization/
-    ├── report.md              # Human-readable summary (START HERE)
-    ├── synthesis.json         # Full analysis with patterns
+    ├── report.json            # Canonical source of truth
+    ├── report.md              # Human-readable dashboard (start here)
+    ├── report.html            # Self-contained HTML with filters
+    ├── execution-plan.md      # Prioritized fix plan
+    ├── synthesis.json         # Systemic patterns
     ├── all-findings.json      # Raw findings from all domains
     ├── discovery.json         # Tech stack detection
-    └── [domain]-findings.json # Individual domain results
+    ├── [domain]-findings.json # Individual domain results
+    └── .cache/                # Hash-based re-run cache
 ```
 
-**To view the report:**
-```bash
-cat ~/my-app/.optimization/report.md
-```
+`report.json` is canonical; the other artifacts derive from it. `metadata.version` is `3.0.0`. Because the CLI has no verifier pass, `report.json` has no refuted findings and every finding is marked unverified.
 
 ---
 
-## 🚀 Advanced: CI/CD Integration
+## Config file
 
-### GitHub Actions Example
+Place `.ucof.config.json` at the project root, or pass `--config <path>`. Precedence: CLI flags, then config file, then built-in defaults.
+
+```json
+{
+  "concurrency": 3,
+  "fileSizeLimitBytes": 102400,
+  "outputDir": ".optimization",
+  "ci": { "failOn": { "critical": 1 } },
+  "models": {
+    "haiku": "claude-haiku-4-5",
+    "sonnet": "claude-sonnet-5-5",
+    "opus": "claude-opus-5-5"
+  },
+  "pricing": {
+    "claude-haiku-4-5": { "input": 1, "output": 5 },
+    "claude-sonnet-5-5": { "input": 2, "output": 10 },
+    "claude-opus-5-5": { "input": 4, "output": 20 }
+  },
+  "includeGlobs": [],
+  "excludeGlobs": []
+}
+```
+
+- `models` maps the tier names (haiku, sonnet, opus) to model ids. Override them to pin a different model. By default discovery uses Haiku, security and external use Opus, the other domains use Sonnet, and synthesis uses Opus.
+- `pricing` is USD per million tokens, keyed by model id, and drives the cost estimate. A model id with no entry falls back to the Sonnet rate, so add an entry if you point `models` at a different id.
+- `ci.failOn` sets the severity thresholds that produce a non-zero exit code in `--ci` mode.
+- `includeGlobs` and `excludeGlobs` narrow what the scanner reads.
+
+If a preferred model is unavailable or rate-limited, the CLI falls back Opus to Sonnet to Haiku and records a warning in the report.
+
+---
+
+## CI/CD integration
+
+### Recommended: headless plugin
+
+If you can install Claude Code in the pipeline, run the plugin. Findings are verified, and the same plugin runs locally and in CI. `-p` is print mode (non-interactive); read the result from `report.json`. For permission handling in non-interactive runs (`--permission-mode`), see the Claude Code documentation.
 
 ```yaml
-# .github/workflows/analyze.yml
-name: UCOF Analysis
+# .github/workflows/ucof-plugin.yml
+name: UCOF (plugin)
 
 on:
+  workflow_dispatch:
   push:
-    branches: [main, develop]
-  pull_request:
+    branches: [main]
 
 jobs:
   analyze:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v3
+      - uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: '20'
+
+      - name: Install Claude Code and UCOF
+        run: |
+          npm install -g @anthropic-ai/claude-code
+          git clone https://github.com/nativardi/ucof.git /tmp/ucof
+
+      - name: Run UCOF
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          claude -p --plugin-dir /tmp/ucof "/ucof analyze ."
+
+      - name: Fail on critical findings
+        run: |
+          CRITICAL=$(jq '.severityCounts.critical' .optimization/report.json)
+          if [ "$CRITICAL" -gt 0 ]; then
+            echo "Critical issues found. See .optimization/report.md"
+            exit 1
+          fi
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ucof-report
+          path: .optimization/
+```
+
+### Alternative: this CLI
+
+Use the CLI where Claude Code cannot be installed. A ready-made workflow is at [`.github/workflows/ucof.yml`](../.github/workflows/ucof.yml). The essential steps:
+
+```yaml
+# .github/workflows/analyze.yml
+name: UCOF Analysis (CLI)
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
 
       - name: Install UCOF
         run: |
-          cd cli-standalone
+          git clone https://github.com/nativardi/ucof.git /tmp/ucof
+          cd /tmp/ucof/cli-standalone
           npm install
 
       - name: Run Analysis
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: |
-          cd cli-standalone
-          node ucof.js analyze ..
+          node /tmp/ucof/cli-standalone/ucof.js analyze "$GITHUB_WORKSPACE" --ci > ucof-report.json
 
-      - name: Fail if Critical Issues Found
-        run: |
-          CRITICAL=$(jq '.summary.by_severity.critical' .optimization/synthesis.json)
-          if [ "$CRITICAL" -gt 0 ]; then
-            echo "❌ Critical issues found! Please review .optimization/report.md"
-            exit 1
-          fi
-
-      - name: Comment PR with Report
-        if: github.event_name == 'pull_request'
-        uses: actions/github-script@v6
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
         with:
-          script: |
-            const fs = require('fs');
-            const report = fs.readFileSync('.optimization/report.md', 'utf8');
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: '## 📊 UCOF Analysis\n\n' + report
-            });
+          name: ucof-report
+          path: |
+            ucof-report.json
+            .optimization/report.md
+            .optimization/report.html
+            .optimization/execution-plan.md
 ```
 
-**To enable:**
-1. Save the file as `.github/workflows/analyze.yml` in your repo
-2. Go to **Settings → Secrets** and add `ANTHROPIC_API_KEY`
-3. Push to main/develop to trigger
+In `--ci` mode the CLI prints the canonical JSON to stdout and exits non-zero when the `ci.failOn` thresholds are met, so the step itself fails the build without a separate `jq` check. Remember that these findings are unverified, so consider gating on a trend or a threshold rather than failing on any single finding.
+
+To enable either workflow: save it under `.github/workflows/`, add `ANTHROPIC_API_KEY` under Settings, Secrets and variables, Actions, and push.
+
+Because each run makes model calls, running on `main`, on a schedule, or by manual trigger is usually a better fit than every pull request on a busy repository.
 
 ---
 
-## 💡 Use Cases
+## What the CLI does
 
-### Daily Local Use
+The CLI is not a prompt wrapper; it is an analysis engine.
+
+1. **Scans your project.** Reads real files, respects `.gitignore`, skips binaries and files over 100KB, and logs skip reasons.
+2. **Loads the lenses.** Domain prompts come from `skills/ucof/references/domains/`, and the finding contract is injected into every prompt.
+3. **Runs domains in parallel.** Configurable concurrency (default 3) via `Promise.allSettled()`, with `max_tokens` of 16000 per call.
+4. **Falls back gracefully.** If Opus is unavailable it tries Sonnet, then Haiku, with a warning in the report.
+5. **Survives partial failures.** If 3 of 8 domains fail you still get a report for the other 5, with an explicit "5/8 domains analyzed" note.
+6. **Synthesizes patterns only.** The synthesis call asks the model only for systemic patterns. Stable ids, dedupe, the health score, the execution plan, and top fixes are computed in code.
+7. **Caches.** File hashes, config, and the model map decide whether re-analysis is needed. `--force` bypasses.
+8. **Generates canonical output.** `report.json` is the source of truth; MD, HTML, and the execution plan derive from it.
+9. **Tracks trends.** With a previous `report.json`, shows what is new, what is resolved, and the score delta.
+
+What it does **not** do: verify findings, or implement fixes. For those use the plugin.
+
+### Architecture
+
+```
+cli-standalone/
+├── ucof.js              # Thin entrypoint
+└── lib/
+    ├── scanner.js       # Project walker + manifest builder
+    ├── config.js        # Config loading with precedence; model + pricing defaults
+    ├── cache.js         # Hash-based run caching
+    ├── domains/index.js # Domain registry + file selectors (loads lens files)
+    ├── orchestrator.js  # Parallel execution + model fallback
+    └── reporter.js      # JSON -> MD/HTML/plan; ids, score, trend
+```
+
+### Tests
+
 ```bash
+cd cli-standalone
+npm test
+```
+
+20 tests using Node's built-in test runner: scanner, orchestrator, reporter, cache, config, CI mode, plugin layout, render adapter, HTML self-containment, and trend diff.
+
+---
+
+## Use cases
+
+```bash
+# Daily local use
 ucof analyze /path/to/my/project
-```
 
-### Weekly Re-checks
-```bash
-# Faster (uses cached discovery)
+# Weekly re-check with cached discovery
 ucof analyze /path/to/my/project --skip-discovery
-```
 
-### Multiple Projects
-```bash
+# Multiple projects
 for project in ~/projects/*; do
   ucof analyze "$project"
 done
-```
 
-### Performance Troubleshooting
-```bash
-ucof analyze /path/to/project --skip-discovery
-# Then focus on: cat /path/to/project/.optimization/performance-findings.json
-```
-
----
-
-## ❓ FAQ
-
-### Q: Where do I get the API key?
-**A:** Visit https://console.anthropic.com/account/keys (takes 30 seconds)
-
-### Q: How much does it cost?
-**A:** ~$0.50 per analysis (you get $5 free credits with a new account)
-
-### Q: Is the API key secure?
-**A:** Yes:
-- Only used to call Anthropic's API
-- Never stored or logged
-- Set as environment variable (best practice)
-- Delete the key anytime from the dashboard
-
-### Q: Can I skip the API key?
-**A:** Yes! Use the [Skill Version](../skill-claude-code/README.md) instead (no API key needed)
-
-### Q: What if analysis fails?
-**A:** Try:
-```bash
-# Check your API key
-echo $ANTHROPIC_API_KEY
-
-# Verify it starts with 'sk-ant-'
-# If empty, run: export ANTHROPIC_API_KEY="..."
-
-# Try a smaller project first
-ucof analyze /path/to/small-project
-```
-
-### Q: How long does analysis take?
-**A:** Depends on project size:
-- Small project (< 100 files): 1-2 minutes
-- Medium project (100-500 files): 2-3 minutes
-- Large project (500+ files): 3-5 minutes
-
-### Q: Can I analyze multiple projects at once?
-**A:** Yes:
-```bash
-ucof analyze /path/to/project-a
-ucof analyze /path/to/project-b
-```
-
-But they run sequentially. For parallel:
-```bash
+# Parallel projects
 (ucof analyze /path/to/project-a &)
 (ucof analyze /path/to/project-b &)
 wait
+
+# Performance troubleshooting
+ucof analyze /path/to/project --skip-discovery
+cat /path/to/project/.optimization/performance-findings.json
 ```
-
-### Q: Will this modify my code?
-**A:** No. It's read-only. Only creates `.optimization/` folder.
-
-### Q: Can I ignore certain files?
-**A:** Not yet. It will analyze:
-- All source code
-- Config files
-- Tests
-- (Skips: node_modules, .git, dist/)
 
 ---
 
-## 🛠️ Troubleshooting
+## FAQ
+
+### Where do I get the API key?
+https://console.anthropic.com/account/keys
+
+### How much does it cost?
+It depends on repository size and the model mix in your config. The CLI prints a cost estimate using the `pricing` table. Narrow the scope with `excludeGlobs`, or lower cost by pointing `models.opus` at a cheaper model.
+
+### Is the API key secure?
+The CLI uses it only to call Anthropic's API; it is read from the environment and never written to the output. Use an environment variable or your CI's secret store and rotate keys from the console at any time.
+
+### Can I skip the API key?
+Yes. Use the plugin in Claude Code instead; it runs on your Claude Code plan or API key. See the [main README](../README.md).
+
+### How long does analysis take?
+It depends on repository size, concurrency, and model load. Use `--concurrency` to adjust, and the cache makes unchanged re-runs fast.
+
+### Will this modify my code?
+No. The CLI is read-only. It creates only the `.optimization/` folder.
+
+### Can I ignore certain files?
+Yes. The scanner respects `.gitignore`, skips `.git`, `node_modules`, build and dist directories, and binaries, skips files over 100KB (configurable via `fileSizeLimitBytes`), and supports `includeGlobs` and `excludeGlobs`. Skip reasons are logged in the report.
+
+### Why are the findings marked unverified?
+The CLI has no verifier pass. Each finding is a model's claim from the files it was shown. The plugin adds an independent agent that tries to refute each one against the code. See [METHODOLOGY.md](../METHODOLOGY.md#why-verification).
+
+---
+
+## Troubleshooting
 
 ### "Command not found: ucof"
 
-**Problem:** Can't run the command
-
-**Solution:**
 ```bash
-# Use full path:
-~/ucof-cli/cli-standalone/ucof.js analyze /path/to/project
+# Use the full path
+~/ucof/cli-standalone/ucof.js analyze /path/to/project
 
-# OR create alias:
-alias ucof='~/ucof-cli/cli-standalone/ucof.js'
-source ~/.zshrc
+# Or re-link / alias
+cd ~/ucof/cli-standalone && npm link
+alias ucof='~/ucof/cli-standalone/ucof.js'
 ```
-
----
 
 ### "API key not found"
 
-**Problem:** Error: "ANTHROPIC_API_KEY not found"
-
-**Solution:**
 ```bash
-# Check if set:
-echo $ANTHROPIC_API_KEY
-
-# If empty, set it:
+echo $ANTHROPIC_API_KEY            # check
 export ANTHROPIC_API_KEY="sk-ant-..."
-
-# Make permanent:
-echo 'export ANTHROPIC_API_KEY="sk-ant-..."' >> ~/.zshrc
-source ~/.zshrc
+echo 'export ANTHROPIC_API_KEY="sk-ant-..."' >> ~/.zshrc && source ~/.zshrc
 ```
-
----
 
 ### "Project path does not exist"
 
-**Problem:** Error: "Project path does not exist"
+Use an absolute path and confirm it exists:
 
-**Solution:**
 ```bash
-# Use absolute path, not relative:
-❌ ucof analyze ./my-app
-✅ ucof analyze /Users/me/my-app
-
-# Check path:
-ls /Users/me/my-app  # Should list files
+ls /Users/me/my-app
+ucof analyze /Users/me/my-app
 ```
 
----
+### "No analysis found" (when running fix)
+
+Run `ucof analyze` first.
 
 ### "Analysis seems incomplete"
 
-**Problem:** Fewer findings than expected
-
-**Solution:**
-```bash
-# Check the report:
-cat /path/to/project/.optimization/report.md
-
-# If empty domains:
-# The project might be very large (hitting context limits)
-# OR it's a clean project (good job!)
-```
-
----
+Check the report for coverage notes (`cat .optimization/report.md`). A very large project is sampled, bounded by the prompt limits; the plugin explores with Read and Grep and handles size better. A clean project also produces few findings.
 
 ### "Node.js not found"
 
-**Problem:** Error: "command not found: node"
-
-**Solution:**
-```bash
-# Install Node.js: https://nodejs.org/
-# Download and run installer
-
-# Verify:
-node --version  # Should show v18 or higher
-```
+Install Node.js 18 or newer from https://nodejs.org/ and verify with `node --version`.
 
 ---
 
-## 📚 Learn More
+## Learn more
 
-- [Main README](../README.md) - Choose between Skill and CLI versions
-- [Skill Version](../skill-claude-code/README.md) - No API key option
-- [Methodology](../METHODOLOGY.md) - How analysis works
-- [Original Install Guide](./INSTALL.md) - Legacy documentation
-
----
-
-## 🚀 Next Steps
-
-1. ✅ Complete the 3-step setup above
-2. ✅ Run: `ucof analyze /path/to/your/project`
-3. ✅ Check: `cat /path/to/your/project/.optimization/report.md`
-4. ✅ Fix issues in priority order (critical first)
-
----
-
-## 💬 Questions?
-
-- **Installation stuck?** Check Step 1 - make sure `npm install` completed
-- **API key issues?** Verify at https://console.anthropic.com/account/keys
-- **Analysis failing?** Check the error message and [troubleshooting](./README.md#troubleshooting)
-- **Want to automate?** See [CI/CD Integration](./README.md#-advanced-cicd-integration) above
-
----
-
-**Happy analyzing! 🔍**
+- [Main README](../README.md): the plugin, quick start
+- [Plugin vs CLI](../VERSIONS.md)
+- [Methodology](../METHODOLOGY.md)
+- [Finding contract](../skills/ucof/references/finding-contract.md)
