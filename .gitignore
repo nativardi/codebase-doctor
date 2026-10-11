@@ -141,3 +141,6 @@ DECISIONS.md
 notes/
 .notes/
 personal/
+
+# plugin eval output
+evals/results/

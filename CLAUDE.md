@@ -1,79 +1,80 @@
 # UCOF — Claude Code Project Rules
 
-Instructions for AI assistants working on this repository.
+Instructions for AI assistants working on this repository. The repository root is the Claude Code plugin root.
 
 ---
 
-## 1. HTML Report Design
+## 1. Layout (what lives where)
 
-The HTML report at `cli-standalone/lib/reporter.js` (the `generateHtmlFromReport` function) has a deliberate aesthetic — dark engineering-blueprint theme, mono typography, ochre accent, semantic severity colors, grid-line background, staggered entry animations.
+- `skills/ucof/SKILL.md` — the `/ucof` front desk (analyze, fix). Keep it under 300 lines; detail goes in `references/`.
+- `skills/ucof/references/domains/*.md` — the eight domain lenses. Single source of truth for what each analyst hunts; the CLI reads the same files.
+- `skills/ucof/references/finding-contract.md` — the finding schema, severity table, scoring rule. Single source of truth; never restate it elsewhere, link to it.
+- `agents/*.md` — scout, analyst, verifier, fixer, fix-reviewer. Every agent sets an explicit `model:`.
+- `scripts/render-report.js` — deterministic rendering (ids, dedupe, score, plan, HTML) built on `cli-standalone/lib/reporter.js`. Scoring and planning live in code, never in prompts.
+- `cli-standalone/` — the headless API alternative. Tests live in `cli-standalone/test/`.
 
-**Rule:** Any time you touch HTML/CSS/JS in the report generator — or create any new UI output for UCOF — **invoke the `frontend-design` skill first**. Do not write UI code without it.
-
-**Why:** The report is the product's user-facing surface. Generic styling undermines everything else the tool does well. The skill ensures bold, intentional, production-grade design choices instead of default AI aesthetics.
-
-**How to apply:**
-1. Before editing the `generateHtmlFromReport` function, call `Skill → frontend-design:frontend-design`
-2. Commit to an aesthetic direction and execute it precisely
-3. Do not add CDN dependencies — the report must remain self-contained (inline CSS/JS only)
-4. Respect existing design tokens in `:root` CSS variables when making incremental changes
+**Rule:** Only `skills/ucof/` may contain a `SKILL.md`. Any other `skills/<x>/SKILL.md` becomes a separately exposed skill. A test enforces this.
 
 ---
 
-## 2. Documentation Discipline
+## 2. HTML Report Design
 
-The documentation set (`README.md`, `METHODOLOGY.md`, `VERSIONS.md`, `QUICKSTART.md`, `CHANGELOG.md`, `cli-standalone/README.md`, `SKILL.md`, `skill-claude-code/SKILL.md`) is the product's on-ramp for users.
+The HTML report at `cli-standalone/lib/reporter.js` (`generateHtmlFromReport`) has a deliberate aesthetic: dark engineering-blueprint theme, mono typography, ochre accent, semantic severity colors, grid-line background, staggered entry animations.
 
-**Rule:** When documentation conflicts with actual behavior, fix the code to match the docs or fix the docs to match the code — never leave them out of sync.
-
-**Rule:** Never gut documentation during refactors. If content is being moved, move it. If it's being replaced, replace it with equivalent or greater depth. Thin stubs are not acceptable.
+**Rule:** Before touching HTML/CSS/JS in the report generator, or creating any new UI output, invoke the `frontend-design` skill. Do not add CDN dependencies; the report stays self-contained. Respect the `:root` design tokens.
 
 ---
 
-## 3. SKILL.md Sync
+## 3. Documentation Discipline
 
-Root `SKILL.md` and `skill-claude-code/SKILL.md` must be byte-identical. The test suite enforces this via hash comparison.
+Docs: `README.md`, `METHODOLOGY.md`, `VERSIONS.md`, `CHANGELOG.md`, `cli-standalone/README.md`, `skills/ucof/references/methodology.md`.
 
-**Rule:** If you edit one, copy it to the other in the same change.
+**Rule:** When documentation conflicts with behavior, fix one to match the other in the same change. Never thin documentation during a refactor: move content or replace it with equal or greater depth.
 
 ---
 
 ## 4. Test Discipline
 
-The CLI tests live under `cli-standalone/test/` and use Node's built-in test runner.
+**Rule:** Run `cd cli-standalone && npm test` before declaring any change complete. All must pass. New features get tests; bug fixes get a regression test.
 
-**Rule:** Run `cd cli-standalone && npm test` before declaring any CLI change complete. All must pass.
-
-**Rule:** When adding features, add tests. When fixing bugs, add a regression test.
+**Rule:** After changing `skills/`, `agents/`, or `.claude-plugin/`, run `claude plugin validate .` from the repo root.
 
 ---
 
-## 5. Read-Only Product Stance
+## 5. Read-Only Analysis, Gated Fixes
 
-UCOF never modifies analyzed code. Analysis, fix mode, and future interactive modes can explain, prioritize, and preview patches, but must not edit the target repository.
+Analysis never modifies the analyzed repository outside its `.optimization/` output directory. Scout, analyst, and verifier agents are read-only by tool set.
 
-**Rule:** Do not add features that write to the analyzed project beyond the `.optimization/` output directory.
+The fix job may write code, under these constraints: it works in an isolated git worktree, every diff passes the fix-reviewer, patches are written to `.optimization/patches/`, and nothing touches the user's working tree until the user picks which patches to apply. UCOF never commits, pushes, or opens pull requests.
+
+**Rule:** Do not loosen any of those constraints. Do not add writes to the analyzed project from the analyze job.
 
 ---
 
 ## 6. Scope Discipline
 
-UCOF v2.1 deliberately defers several features: interactive REPL, new micro-domains (secrets/CVE/dead-code scanners), hybrid analyzers, plugin discovery, token budgeting.
+Deferred features: interactive REPL, new micro-domains (secrets/CVE/dead-code scanners), hybrid static analyzers, token budgeting, a verifier pass in the CLI.
 
-**Rule:** Do not implement deferred features without explicit user approval. Keep incremental changes incremental.
+**Rule:** Do not implement deferred features without explicit user approval. Keep changes incremental. Prefer editing a lens or an agent prompt over adding orchestration code.
 
-<!-- CLAUDE-DOCTOR: START -->
+---
+
+## 7. Validation
+
+`cli-standalone/test/fixtures/planted-project/` holds planted issues and decoys; the key is `cli-standalone/test/fixtures/planted-project.key.json` (kept outside the project so analysts cannot read it). `scripts/score-eval.js <report.json> <key.json>` scores a run.
+
+**Rule:** When changing an agent prompt or a lens, re-run the plugin against the fixture and compare precision, recall, and decoys tripped with the numbers in `CHANGELOG.md`. Record new numbers there.
+
 ## Claude Doctor
 
-**Last audited:** 2026-10-04
+**Last audited:** 2026-10-11
 
 **Audit status:** Healthy
 
 **Model guidance**
-- **Fable:** Run `cd cli-standalone && npm test` before declaring a CLI change done, and keep both `SKILL.md` copies byte-identical.
-- **Opus:** The deferred-features list and the read-only product stance are the boundaries; ask before crossing either.
-- **Sonnet:** Invoke `frontend-design` before touching `generateHtmlFromReport`.
+- **Fable:** Run `npm test` and `claude plugin validate .` before declaring done; keep the finding contract as the one schema.
+- **Opus:** The read-only analysis stance and the gated fix path are the boundaries; ask before crossing either.
+- **Sonnet:** Invoke `frontend-design` before touching `generateHtmlFromReport`; edit lenses, not orchestration, for analysis improvements.
 
 **Doctor notes**
-- No further action needed.
-<!-- CLAUDE-DOCTOR: END -->
+- v3.0.0 restructured the repo as a plugin; the `SKILL.md` sync rule went away with the duplicate file.

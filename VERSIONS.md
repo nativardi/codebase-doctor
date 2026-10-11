@@ -1,574 +1,170 @@
-# UCOF Versions - Detailed Comparison
+# Plugin vs CLI
 
-> **Two ways to use UCOF - choose what fits your needs.**
-
----
-
-## 🎯 Quick Reference Table
-
-| Aspect | Skill Version | CLI Version |
-|--------|---------------|-------------|
-| **Setup Time** | 2 min | 3 min |
-| **API Key Required** | ❌ No | ✅ Yes (~$5 free) |
-| **Cost per Run** | Free | ~$0.50 |
-| **Installation** | None | npm install |
-| **Access** | GitHub URL or copy-paste | Terminal command |
-| **Model Selection** | ✅ Optimized (Haiku/Sonnet/Opus) | ✅ Optimized (Haiku/Sonnet/Opus) |
-| **Parallel Analysis** | ✅ Yes (3-5 min) | ✅ Yes (1-3 min) |
-| **Large Projects** | Context limits | No limits |
-| **CI/CD Ready** | Scriptable | ✅ Full automation |
-| **Automation** | Manual | Full support |
-| **Team Usage** | Per-person | Shared config |
-| **Offline Mode** | ✅ Local clone | ❌ No |
-| **Best For** | Quick audits, individual devs | Teams, automation, large projects |
+UCOF ships two ways to run the same methodology. The **plugin** (the repository root) is the primary product. The **CLI** (`cli-standalone/`) is a headless alternative for environments without Claude Code. Both read the same domain lenses (`skills/ucof/references/domains/`), use the same finding contract, and share the same reporter code, so scores, ids, and report formats are identical in shape. They differ in how code is read, whether findings are verified, and whether a fix job exists.
 
 ---
 
-## 🆚 Detailed Comparison
+## Which should I use?
 
-### 1. Installation
+Use the **plugin** when:
 
-#### Skill Version
-```
-✅ Super simple:
-- Option A: Just paste URL in Claude Code
-- Option B: Local git clone (works offline)
-- Option C: Copy-paste the skill file
+- You have Claude Code. This is the default choice.
+- You want findings that have been checked by an independent verifier before they count.
+- You want the fix job: verified findings implemented in isolated worktrees, reviewed, and delivered as patches.
+- You want to run it in CI and can install Claude Code in the pipeline (`claude -p`).
 
-⏱️  Time: 30 seconds to 2 minutes
-```
+Use the **CLI** when:
 
-#### CLI Version
-```
-✅ Standard Node.js install:
-- Clone repo
-- npm install
-- Set environment variable
+- Claude Code is not available (an environment where you can only run Node and call the Anthropic API).
+- You want a plain `ucof analyze` command with API-key authentication and nothing else to install.
+- You want the CLI's hash-based cache and a `.ucof.config.json` checked into the repository.
 
-⏱️ Time: 3 minutes
-```
-
-**Winner:** Skill (easier setup)
+If you can run Claude Code headlessly in CI, prefer that over the CLI: the findings are verified, and the same plugin runs locally and in the pipeline.
 
 ---
 
-### 2. Cost
+## Capability table
 
-#### Skill Version
-```
-💚 FREE
-- Uses your Claude Code subscription
-- No additional charges
-- No API key to manage
-- Unlimited analyses
-
-📊 Real cost: $0 per analysis
-```
-
-#### CLI Version
-```
-💳 Pay-as-you-go
-- ~$0.50 per analysis
-- You get $5 free credits (≈10 analyses)
-- Cheaper for large organizations
-- Predictable costs
-
-📊 Real cost: $0.50 per analysis
-```
-
-**Winner:** Skill (free), but CLI wins for high volume
+| Capability | Plugin | CLI |
+|------------|--------|-----|
+| Eight-domain analysis | Yes | Yes |
+| Shared lens files and finding contract | Yes | Yes |
+| How code is read | Agents trace data flows with Read and Grep | Scanner selects files; contents go into the prompt |
+| Verification (adversarial verifier, default refuted) | Yes | No. Findings are unverified |
+| Refuted findings kept under `refutedFindings` | Yes | Not applicable |
+| Fix job (worktrees, review gate, patches) | Yes (`/ucof fix`) | No. `ucof fix` prints top fixes and writes `pr-descriptions.md` |
+| Stable finding ids | Yes | Yes |
+| Health score and execution plan | Yes (shared reporter code) | Yes |
+| Trend vs previous run | Yes | Yes |
+| HTML report | Yes | Yes |
+| Markdown, JSON, and execution-plan reports | Yes | Yes |
+| CI | Yes, `claude -p --plugin-dir ... "/ucof analyze ."`, then read `report.json` | Yes, `--ci`: JSON on stdout and severity-based exit codes |
+| Caching | No | Yes, hash-based, `--force` to bypass |
+| Config file | No (skill arguments) | Yes, `.ucof.config.json` |
+| Domain selection | `--domains security,data` | Config |
+| Model selection | Fixed in agent definitions | Configurable (`models`), with fallback chain |
+| Cost estimates | Not reported | Per-model `pricing` table |
+| Authentication | Your Claude Code plan or API key | `ANTHROPIC_API_KEY` |
+| Writes outside `.optimization/` | Only on your explicit choice, in fix mode | Never |
 
 ---
 
-### 3. Model Selection & Power
+## Cost and time
 
-#### Skill Version
-```
-Intelligent routing (optimized):
-- Discovery: Haiku (fast mapping)
-- Security & External: Opus (critical domains)
-- Data/Backend/Frontend/Infrastructure/Performance/Quality: Sonnet
-- Synthesis: Opus (cross-domain pattern detection)
+Cost and duration depend on repository size and on the model mix. There are no fixed figures to quote.
 
-✅ Pros:
-- Automatic model optimization
-- Free (uses Claude subscription)
-- No API key needed
-- Same intelligence as CLI
-
-❌ Cons:
-- Uses Claude Code quota
-- Large projects may hit context limits
-```
-
-#### CLI Version
-```
-Intelligent routing (identical to Skill):
-- Discovery: Haiku (cheap, fast)
-- Security & External: Opus (critical)
-- Data/Backend/Frontend/Infrastructure/Performance/Quality: Sonnet
-- Synthesis: Opus (cross-domain pattern detection)
-
-✅ Pros:
-- Same model intelligence as Skill
-- Independent context per domain (no limits)
-- Can run in CI/CD
-- Predictable costs
-
-❌ Cons:
-- Costs ~$0.50 per analysis
-- Requires API key
-```
-
-**Winner:** Tie for intelligence, Skill wins on cost, CLI wins on scale
+- **Plugin.** Runs on your Claude Code plan or API key. The scout uses Haiku, most analysts use Sonnet, security and external analysts and all verifiers use Opus. Verification adds Opus calls, which is the price of verified findings. `--domains` narrows a run.
+- **CLI.** Uses an Anthropic API key directly and bills tokens against it. The model ids are configurable, and the `pricing` table in the config drives the cost estimate it prints.
 
 ---
 
-### 4. Analysis Speed
+## Plugin
 
-#### Skill Version
-```
-Parallel analysis: 3-5 minutes total
+### Installation
 
-Flow:
-1. Discovery (Haiku - fast)
-2. Batch 1 (parallel): Security + External (Opus)
-3. Batch 2 (parallel): Data + Backend (Sonnet)
-4. Batch 3 (parallel): Frontend + Infrastructure + Performance + Quality (Sonnet)
-5. Synthesis (Opus)
-6. Report
-
-⏰ Typical timeline:
-- Small project: 3 min
-- Medium project: 4 min
-- Large project: 5 min
-
-Speedup: Parallel domains within Claude Code session
-```
-
-#### CLI Version
-```
-Parallel analysis: 1-3 minutes total
-
-Flow:
-1. Discovery (Haiku)
-2. All domains in parallel (Security/External=Opus, others=Sonnet)
-3. Synthesis (Opus)
-4. Report
-
-⏰ Typical timeline:
-- Small project: 1 min
-- Medium project: 2 min
-- Large project: 3 min
-
-Speedup: Full parallel + independent API calls
-```
-
-**Winner:** CLI (slightly faster due to fully independent parallel execution)
-
----
-
-### 5. Project Size Limits
-
-#### Skill Version
-```
-Claude's context window: ~200K tokens
-
-Typical limits:
-- Small project: ✅ No problem (< 500 files)
-- Medium project: ✅ Works (500-2000 files)
-- Large project: ⚠️  May hit limits (> 2000 files)
-
-When to worry:
-- 1000+ source files
-- Very large monorepo
-- Multiple languages
-
-Workaround: Analyze specific domains or subdirectories
-```
-
-#### CLI Version
-```
-Fresh context per domain: No practical limits
-
-Each domain gets:
-- 200K token context window
-- Only files relevant to that domain
-
-Can handle:
-- ✅ 10,000+ file projects
-- ✅ Complex monorepos
-- ✅ Multiple languages
-- ✅ Microservices architecture
-```
-
-**Winner:** CLI (no practical limits)
-
----
-
-### 6. Use Cases
-
-#### Skill Version - Perfect For
-
-✅ **One-time audits**
-```
-"I want a quick security check"
-→ Paste URL, get report in 3 minutes
-```
-
-✅ **Learning & exploration**
-```
-"Let me understand what UCOF does"
-→ Try locally, no API key needed
-```
-
-✅ **Individual developers**
-```
-"I want to audit my personal projects"
-→ Free, simple, effective
-```
-
-✅ **Small to medium projects**
-```
-"My app is < 1000 files"
-→ Works perfectly
-```
-
-✅ **Quick before deployment**
-```
-"I'm shipping tomorrow, find critical issues"
-→ 5 minute audit
-```
-
-#### CLI Version - Perfect For
-
-✅ **Team automation**
-```
-"We want analysis on every PR"
-→ GitHub Actions integration
-→ Automated quality gates
-```
-
-✅ **Large codebases**
-```
-"Our monorepo has 5000+ files"
-→ CLI handles it without limits
-```
-
-✅ **Cost optimization**
-```
-"We analyze 20 projects/month"
-→ Cost: $10 vs free for Skill
-→ But parallel analysis is worth it
-```
-
-✅ **CI/CD pipelines**
-```
-"Integrate analysis into our workflow"
-→ Full automation, status checks
-```
-
-✅ **Enterprise deployments**
-```
-"We need reliable, repeatable analysis"
-→ Consistent model routing
-→ API key management
-→ Audit logs
-```
-
-✅ **Performance critical**
-```
-"Analysis takes too long"
-→ Parallel domains = 60% faster
-```
-
----
-
-### 7. Integration Examples
-
-#### Skill Version
-
-```
-# In Claude Code, simple one-liner:
-"Read https://raw.githubusercontent.com/nativardi/ucof/main/SKILL.md
-and analyze /path/to/my/project"
-
-# Can also do:
-"Analyze /Users/me/projects/app-a, app-b, and app-c"
-```
-
-#### CLI Version
+For a single session:
 
 ```bash
-# Terminal command:
-ucof analyze /path/to/my/project
-
-# Pipe to CI/CD:
-if ucof analyze . | grep -q "critical"; then exit 1; fi
-
-# GitHub Actions:
-- name: Analyze Code
-  run: ucof analyze .
-
-# Cron job (weekly analysis):
-0 0 * * 0 cd ~/my-app && ucof analyze . >> analysis.log
+git clone https://github.com/nativardi/ucof.git
+claude --plugin-dir /path/to/ucof
 ```
 
-**Winner:** Skill (simpler for ad-hoc), CLI (better for automation)
-
----
-
-### 8. Offline Capability
-
-#### Skill Version
-```
-✅ Can work offline!
-
-Option 1: Clone locally
-- git clone https://github.com/nativardi/ucof.git ~/ucof
-- Claude Code can read local files
-- No internet needed after setup
-
-Option 2: Copy-paste
-- Save SKILL.md locally
-- Paste whenever needed
-- Pure offline
-```
-
-#### CLI Version
-```
-❌ Requires internet
-- Must call Anthropic API
-- Offline analysis not possible
-- But: Can cache discovery with --skip-discovery
-```
-
-**Winner:** Skill (works offline)
-
----
-
-### 9. Data Privacy
-
-#### Skill Version
-```
-✅ Claude Code processes locally
-- Files stay on your machine
-- Only used for that analysis
-- No additional logging
-- Standard Claude privacy
-
-Data sent to Anthropic:
-- Your code (for analysis)
-- Nothing stored permanently
-```
-
-#### CLI Version
-```
-✅ Same privacy model
-- Files stay on your machine
-- Only used for analysis
-- No persistent storage
-- Standard Claude API privacy
-
-Data sent to Anthropic:
-- Your code (for analysis)
-- API logs (temporary)
-```
-
-**Winner:** Tie (both respect privacy)
-
----
-
-### 10. Customization
-
-#### Skill Version
-```
-✅ Easy to customize
-- Copy the SKILL.md file
-- Edit the methodology
-- Add your own checks
-- Share custom version
-
-Examples:
-- Add framework-specific rules
-- Adjust severity levels
-- Focus on security only
-- Add internal tool checks
-```
-
-#### CLI Version
-```
-⚠️  Harder to customize
-- Modify ucof.js
-- Requires JavaScript knowledge
-- More complex codebase
-- Changes require npm rebuild
-
-More powerful:
-- Can add new domains
-- Create new output formats
-- Hook into CI/CD systems
-```
-
-**Winner:** Skill (easier customization)
-
----
-
-## 🤔 How to Choose?
-
-### Use Skill Version If:
-- ✅ You want the simplest setup
-- ✅ You don't have an API key
-- ✅ You analyze projects occasionally
-- ✅ Your projects are < 1000 files
-- ✅ You're exploring UCOF
-- ✅ You want offline capability
-
-### Use CLI Version If:
-- ✅ You need CI/CD automation
-- ✅ You analyze many projects
-- ✅ You have very large projects
-- ✅ You want faster analysis (parallel)
-- ✅ You're in an organization
-- ✅ You need consistent, repeatable results
-
----
-
-## 🔄 Migration Guide
-
-### Starting with Skill, Want to Switch to CLI?
+Through the marketplace (the repository is its own single-plugin marketplace):
 
 ```bash
-# 1. Get API key at https://console.anthropic.com/
-# 2. Follow CLI setup: ~/ucof-cli/cli-standalone/
-# 3. Run: ucof analyze /path/to/project
-# 4. Results are identical, just from .optimization/report.md
+claude plugin marketplace add nativardi/ucof
+claude plugin install ucof@ucof
 ```
 
-### Starting with CLI, Want to Use Skill?
+### Use
 
 ```
-# 1. In Claude Code, paste:
-"Read ~/ucof/SKILL.md
-and analyze /path/to/my/project"
-
-# 2. Results in Claude's response instead of file
+/ucof                                   # analyze the current directory
+/ucof analyze ../other-repo             # analyze another path
+/ucof analyze . --domains security,data
+/ucof fix                               # implement verified findings
+/ucof fix --ids SEC-3ac440
 ```
 
-### Running Both (Why Not?)
+Argument form: `/ucof [analyze|fix] [path] [--domains security,data] [--ids SEC-3ac440,...]`. The skill is user-invoked only; Claude will not start it on its own.
 
+### CI
+
+```bash
+claude -p --plugin-dir /path/to/ucof "/ucof analyze ."
+jq '.scores.overall' .optimization/report.json
 ```
-# Local development: Use Skill (quick, free)
-# Pre-production: Use CLI (comprehensive, parallel)
-# CI/CD: Use CLI (automated)
-```
+
+`-p` is print mode: Claude Code runs non-interactively and exits. Analysis asks no questions, so it suits unattended runs. Do not run `fix` unattended; it asks which findings to fix and whether to apply patches. For permission handling in non-interactive runs (`--permission-mode`), see the Claude Code documentation.
+
+### What it needs
+
+Claude Code, git (the fix job uses worktrees), and `node` on the PATH (the renderer is a Node script). No `npm install` is required for the plugin itself.
 
 ---
 
-## 💰 Cost Analysis
+## CLI
 
-### Scenario 1: Individual Developer (5 projects/year)
+### Installation
 
-```
-Skill Version:
-- Cost: $0
-- Setup: 2 min
-- Total time per analysis: 3-5 min
-- Total yearly: ~15-25 minutes
-
-CLI Version:
-- Cost: $2.50 (5 × $0.50)
-- Setup: 3 min
-- Total time per analysis: 1-3 min
-- Total yearly: ~5-15 minutes
-
-Winner: Skill (free, nearly same speed for small projects)
+```bash
+git clone https://github.com/nativardi/ucof.git
+cd ucof/cli-standalone
+npm install
+npm link                      # optional: puts `ucof` on your PATH
+export ANTHROPIC_API_KEY="your-key"
 ```
 
-### Scenario 2: Team (100 analyses/year)
+Requires Node.js 18 or newer.
 
-```
-Skill Version:
-- Cost: $0
-- Manual copy-paste: inefficient
-- Automation: impossible
-- Team friction: high (no shared setup)
+### Use
 
-CLI Version:
-- Cost: $50 (100 × $0.50)
-- CI/CD automation: included
-- Reproducible: guaranteed
-- Team efficiency: high
-
-Winner: CLI (enables automation, scales)
+```bash
+ucof analyze /path/to/project
+ucof analyze /path/to/project --ci          # JSON on stdout, exit codes
+ucof analyze /path/to/project --force       # bypass the cache
+ucof report /path/to/project
 ```
 
-### Scenario 3: Large Project (1 analysis)
+Everything else (flags, config file, GitHub Actions, troubleshooting) is in [cli-standalone/README.md](./cli-standalone/README.md).
 
-```
-Skill Version:
-- Cost: Free
-- Risk: May hit context limits
-- Likely outcome: Incomplete analysis
+### Limits to know about
 
-CLI Version:
-- Cost: $0.50
-- Risk: None (parallel, no limits)
-- Likely outcome: Complete analysis
-
-Winner: CLI (actually completes the job)
-```
+- Findings are **unverified**. Treat the CLI's output as candidates; the plugin's verifier is what filters false positives.
+- `ucof fix` only prints the top fixes and writes `pr-descriptions.md`. The real fix job is in the plugin.
+- The CLI sends selected file contents to the model, bounded by `promptLimits`, so very large repositories are sampled rather than read in full. The plugin's agents explore with Read and Grep.
 
 ---
 
-## 🎓 Learning Path
+## Migrating from v2
 
-### Week 1: Explore with Skill
-```
-- Try Skill Version (quick, free)
-- Understand what UCOF finds
-- Get comfortable with methodology
-```
+v2 had two products: a "Skill" that was a paste-this-URL prompt (`SKILL.md`) and the CLI. In v3:
 
-### Week 2: Evaluate CLI
-```
-- Read CLI docs
-- Get free Anthropic API credits
-- Compare results with CLI version
-```
+- **The paste-URL skill is gone.** `Read https://raw.githubusercontent.com/.../SKILL.md and analyze ...` no longer works; the root `SKILL.md` and `skill-claude-code/` were removed. Install the plugin instead (see above) and use `/ucof`.
+- **Domain skills moved.** `skills/<domain>/SKILL.md` became lens files at `skills/ucof/references/domains/<domain>.md`. The CLI reads them from there. If you maintained a fork with custom domain prompts, port them to the lens format.
+- **Finding ids changed format.** v2 used sequential ids (`SEC-001`). v3 ids are stable hashes (`SEC-a3f9`), so trend diffs between a v2 `report.json` and a v3 one will show everything as new and resolved. Compare v3 runs against v3 runs.
+- **`report.json` changed.** `metadata.version` is `3.0.0`, there is a `refutedFindings` array and a `verification` summary.
+- **CLI defaults changed.** Model ids are now `claude-haiku-4-5`, `claude-sonnet-5-5`, `claude-opus-5-5`; override them under `models` in `.ucof.config.json`.
+- **Removed docs and files.** `QUICKSTART.md` (folded into the README), `cli-standalone/INSTALL.md` (folded into the CLI README), `READY_TO_PUSH.md`, `cli-standalone/SKILL-ORIGINAL.md`, `cli-standalone/claude-code-prompt.md`, `.agent/`.
 
-### Week 3+: Choose & Use
-```
-- Pick one or both based on use cases
-- Set up automation if needed
-- Run regular analyses
-```
+CLI commands (`analyze`, `report`, `fix`) and flags (`--ci`, `--force`, `--skip-discovery`, `--concurrency`, `--config`) are unchanged.
 
 ---
 
-## 📊 Summary Table
+## Deferred features
 
-| Metric | Skill | CLI | Winner |
-|--------|-------|-----|--------|
-| Easiest setup | ✅✅✅ | ✅✅ | Skill |
-| Cheapest | ✅ Free | 💳 $0.50 | Skill |
-| Fastest | ⏱️ 3-5 min | ⚡ 1-3 min | CLI |
-| Best for large projects | ⚠️ Limits | ✅✅ | CLI |
-| Automation ready | ❌ No | ✅✅ | CLI |
-| Customizable | ✅✅ | ✅ | Skill |
-| Offline capable | ✅ | ❌ | Skill |
-| Enterprise ready | ⚠️ | ✅✅ | CLI |
+These are deliberately out of scope for v3 and will not appear without an explicit decision:
+
+- Interactive REPL mode
+- New micro-domains (secrets, CVE, dead-code scanners)
+- Hybrid analyzers (running `npm audit`, regex scanners, or static heuristics alongside the models)
+- Token budgeting
 
 ---
 
-## 🚀 Next Steps
+## Related
 
-1. **Decide:** Use the decision matrix above
-2. **Setup:** Follow instructions for your chosen version
-3. **Run:** Analyze your first project
-4. **Compare:** If curious, try both to see differences
-5. **Integrate:** Set up automation if you chose CLI
-
----
-
-**Questions? See the README for each version or open an issue!**
+- [README.md](./README.md): install and quick start
+- [METHODOLOGY.md](./METHODOLOGY.md): how the pipeline works and why
+- [cli-standalone/README.md](./cli-standalone/README.md): CLI reference
+- [CHANGELOG.md](./CHANGELOG.md): release history

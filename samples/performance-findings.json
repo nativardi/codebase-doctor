@@ -1,0 +1,82 @@
+[
+  {
+    "id": "PERF-ea4706",
+    "domain": "performance",
+    "category": "n-plus-one-queries",
+    "symbol": "router.get /",
+    "title": "GET /api/orders runs one order_items query per order inside a for-await loop",
+    "severity": "medium",
+    "reportedSeverity": "high",
+    "verification": {
+      "verdict": "downgraded",
+      "reasoning": "The N+1 is real. api/orders.js:8 loads up to 50 orders, and api/orders.js:9-11 awaits one order_items query per order in sequence, so one request makes up to 51 serial round trips. It is reachable by any authenticated user (src/server.js:14). Two parts of the claim are overstated. First, src/db.js:7-9 calls pool.query, which checks out a connection and releases it after each query. A request therefore holds at most one connection at a time and does not hold several across its round trips, so the pool-exhaustion claim does not hold up. Second, prisma/schema.sql:23 indexes order_items(order_id), so each lookup is cheap, and the fan-out is capped at 50 by the LIMIT at api/orders.js:8. The cost is bounded serial latency, so medium rather than high.",
+      "severity": "medium"
+    },
+    "confidence": "high",
+    "rationale": "The handler loads up to 50 orders, then awaits a separate `order_items` query for each one in sequence. A single request therefore makes up to 51 serial round trips, and the default pg pool has only 10 connections.",
+    "evidence": [
+      {
+        "file": "api/orders.js",
+        "lineRange": "9-11",
+        "codeSnippet": "for (const order of orders) {\n    order.items = await db.query('select product_id, quantity from order_items where order_id = $1', [order.id]);\n  }"
+      }
+    ],
+    "impact": "Latency on the orders list grows with page size, and each request holds pool connections for many round trips. Concurrent users can exhaust the pool.",
+    "recommendation": {
+      "action": "Fetch all items in one query with `order_id = ANY($1)`, then group them by order_id in memory. Alternatively, use a single join or json_agg query.",
+      "effort": "low",
+      "code_example": "const ids = orders.map(o => o.id);\nconst items = await db.query('select order_id, product_id, quantity from order_items where order_id = any($1)', [ids]);\nfor (const o of orders) o.items = items.filter(i => i.order_id === o.id);"
+    },
+    "effort": "low",
+    "fileTargets": [
+      "api/orders.js"
+    ],
+    "relatedFindings": [
+      "GET /api/orders runs one order_items query per order"
+    ],
+    "tags": [
+      "database",
+      "n-plus-one",
+      "n+1",
+      "orders",
+      "merged-from:data"
+    ]
+  },
+  {
+    "id": "PERF-714d61",
+    "domain": "performance",
+    "category": "sync-io-in-request-path",
+    "symbol": "router.post /export",
+    "title": "Admin export blocks the event loop with execSync and buffers the whole table in memory",
+    "severity": "medium",
+    "reportedSeverity": "medium",
+    "verification": {
+      "verdict": "confirmed",
+      "reasoning": "api/admin.js:13 calls the synchronous execSync to run psql \\copy on a whole table inside the request handler. The event loop is blocked until psql exits, which stalls every other request, including /health at src/server.js:12. The whole stdout is buffered and turned into a string before res.send at api/admin.js:14. execSync has a default maxBuffer of 1 MiB, so larger tables make it throw. The route sits behind requireAuth and requireAdmin (src/server.js:15, src/auth.js:16-18), and the reporter already took that into account in rating it medium. I found nothing that streams the output or runs the export asynchronously. The medium severity is correct."
+    },
+    "confidence": "high",
+    "rationale": "The handler calls `execSync` to run psql `\\copy` on a whole table. The event loop is blocked until the dump finishes, and the full output is then buffered as a string before being sent. execSync's default maxBuffer will also throw on large tables.",
+    "evidence": [
+      {
+        "file": "api/admin.js",
+        "lineRange": "13-14",
+        "codeSnippet": "const output = execSync(`psql \"$DATABASE_URL\" -c \"\\\\copy ${req.body.table} to stdout csv\"`).toString();\n  res.type('text/csv').send(output);"
+      }
+    ],
+    "impact": "While one export runs, every other request on the process stalls, including /health. Large tables fail at the maxBuffer limit or consume large amounts of memory. The route is admin-only, which limits who can trigger it. The command-injection risk on `req.body.table` belongs to the security lens.",
+    "recommendation": {
+      "action": "Use async `spawn` and pipe the child's stdout to `res`, or stream with pg-copy-streams. Do not buffer the output.",
+      "effort": "medium",
+      "code_example": ""
+    },
+    "effort": "medium",
+    "fileTargets": [
+      "api/admin.js"
+    ],
+    "relatedFindings": [],
+    "tags": [
+      "event-loop",
+      "streaming"
+    ]
+  }
+]
